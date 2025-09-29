@@ -38,7 +38,8 @@
     <script type="module">
         // Importaciones de Firebase (SDK 12.3.0)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+        // ⭐ Importamos signInWithEmailAndPassword para el login explícito
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
         // Configuración específica del proyecto (como respaldo y para simulación)
         const FIREBASE_CONFIG_FALLBACK = {
@@ -63,106 +64,138 @@
             firebaseConfig = FIREBASE_CONFIG_FALLBACK;
         }
         
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        // Se utiliza el nombre del archivo sin prefijo para máxima compatibilidad
-        const MAIN_PAGE_URL = 'mainpage.html'; // Asegúrate de que esta URL sea correcta.
-        let authReady = false;
+        const MAIN_PAGE_URL = 'mainpage.html'; // URL de la página principal
+        let auth = null;
 
         /**
          * Maneja la redirección usando un enlace oculto.
          */
         function navigateToMainPage() {
             const redirectLink = document.getElementById('redirect-link');
+            // Guardar la configuración en sessionStorage para la página principal
+            sessionStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
+            
             if (redirectLink) {
                 // Simular un clic en el enlace para forzar la navegación
                 redirectLink.click();
             } else {
-                // Fallback (manteniendo la URL simplificada)
+                // Fallback
                 window.location.href = MAIN_PAGE_URL;
             }
         }
 
-
         /**
-         * Inicializa Firebase y maneja la autenticación.
-         * Si es exitoso, GUARDA EL TOKEN y redirige.
+         * Actualiza el estado del mensaje y los botones en la UI.
          */
-        async function initAuth() {
+        function updateStatus(message, type = 'info') {
             const statusText = document.getElementById('auth-status');
             const loginButton = document.getElementById('login-button');
 
+            statusText.textContent = message;
+            statusText.classList.remove('bg-blue-100', 'text-blue-600', 'bg-red-100', 'text-red-600', 'bg-green-100', 'text-green-600');
+            loginButton.disabled = (type === 'loading' || type === 'success');
+            loginButton.textContent = (type === 'loading') ? 'Iniciando Sesión...' : (type === 'success' ? 'Acceso Exitoso ✅' : 'Acceder al Curso');
+
+            if (type === 'info' || type === 'loading') {
+                statusText.classList.add('bg-blue-100', 'text-blue-600');
+            } else if (type === 'error') {
+                statusText.classList.add('bg-red-100', 'text-red-600');
+            } else if (type === 'success') {
+                statusText.classList.add('bg-green-100', 'text-green-600');
+            }
+        }
+
+        /**
+         * Inicializa Firebase y verifica la sesión persistente.
+         */
+        function initFirebase() {
             if (!firebaseConfig) {
-                statusText.textContent = '❌ Configuración de Firebase no disponible. Redirección forzada para simular el acceso.';
-                statusText.classList.remove('text-blue-600');
-                statusText.classList.add('text-red-600');
-                loginButton.disabled = false;
-                loginButton.textContent = 'Acceder (Simulación)';
+                updateStatus('❌ Configuración de Firebase no disponible.', 'error');
                 return;
             }
-
+            
             try {
                 const app = initializeApp(firebaseConfig);
-                const auth = getAuth(app);
+                auth = getAuth(app);
                 
-                statusText.textContent = '🔄 Conectando a Firebase...';
+                // 1. Verificar si ya existe una sesión guardada (fast resume)
+                const sessionToken = sessionStorage.getItem('firebaseIdToken');
+                const sessionUid = sessionStorage.getItem('firebaseUid');
                 
-                let userCredential;
-                if (initialAuthToken) {
-                    userCredential = await signInWithCustomToken(auth, initialAuthToken);
-                    statusText.textContent = '✅ Autenticación exitosa (Token). Redirigiendo...';
-                } else {
-                    userCredential = await signInAnonymously(auth);
-                    statusText.textContent = '✅ Autenticación exitosa (Anónimo). Redirigiendo...';
+                if (sessionToken && sessionUid) {
+                    // Si hay token, asumimos que el usuario ya está autenticado y la página principal lo usará.
+                    updateStatus('Sesión encontrada. Redirigiendo rápidamente...', 'success');
+                    setTimeout(navigateToMainPage, 100);
+                    return;
                 }
-                
-                authReady = true;
 
-                if (userCredential.user) {
-                    
-                    // ====================================================================
-                    // ⭐ CORRECCIÓN: Guardar el Token y el UID en sessionStorage
-                    // ====================================================================
-                    const user = userCredential.user;
-                    const idToken = await user.getIdToken();
-                    
-                    // Guardar en sessionStorage para que la página principal lo lea
-                    sessionStorage.setItem('firebaseIdToken', idToken);
-                    sessionStorage.setItem('firebaseUid', user.uid);
-                    // ====================================================================
-                    
-                    // Redirige al mainpage si el login es exitoso
-                    setTimeout(() => {
-                        navigateToMainPage();
-                    }, 500);
-                }
+                updateStatus('Listo para iniciar sesión.', 'info');
 
             } catch (error) {
-                console.error("Error al iniciar sesión con Firebase:", error);
-                statusText.textContent = `⚠️ Error de autenticación: ${error.message}.`;
-                statusText.classList.remove('text-blue-600');
-                statusText.classList.add('text-red-600');
-                
-                // Muestra el botón para un intento manual o para la simulación
-                loginButton.disabled = false;
-                loginButton.textContent = 'Reintentar Acceso';
+                console.error("Error al inicializar Firebase:", error);
+                updateStatus(`⚠️ Error FATAL de Firebase: ${error.message}`, 'error');
             }
         }
         
         /**
-         * Maneja el clic del botón de Acceso.
+         * Maneja el clic del botón de Acceso: intenta el login con email y contraseña.
          */
-        window.handleLogin = function() {
-            if (authReady || !firebaseConfig) {
-                // Si la autenticación es exitosa o es simulación, redirige
-                navigateToMainPage();
-            } else {
-                // Si la autenticación falló, reintenta
-                initAuth();
+        window.handleLogin = async function() {
+            if (!auth) {
+                updateStatus('Módulo de autenticación no cargado. Reintentando...', 'error');
+                initFirebase();
+                return;
+            }
+
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            if (!email || !password) {
+                updateStatus('El email y la contraseña son obligatorios.', 'error');
+                return;
+            }
+
+            updateStatus('Iniciando Sesión...', 'loading');
+
+            try {
+                // ⭐ Usamos signInWithEmailAndPassword
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                
+                // 2. Guardar el Token y el UID en sessionStorage
+                const user = userCredential.user;
+                const idToken = await user.getIdToken();
+                
+                sessionStorage.setItem('firebaseIdToken', idToken);
+                sessionStorage.setItem('firebaseUid', user.uid);
+                
+                updateStatus('Acceso Exitoso. Redirigiendo...', 'success');
+
+                // Redirige al mainpage si el login es exitoso
+                setTimeout(() => {
+                    navigateToMainPage();
+                }, 500);
+
+            } catch (error) {
+                console.error("Error al iniciar sesión:", error);
+                
+                let errorMessage = "Error al iniciar sesión. Verifica tus credenciales.";
+                // Errores comunes de Firebase (simplificado para el usuario)
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = "Usuario no encontrado. ¿Estás registrado?";
+                } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                    errorMessage = "Contraseña incorrecta. Inténtalo de nuevo.";
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = "El formato del email es inválido.";
+                }
+
+                updateStatus(`⚠️ ${errorMessage}`, 'error');
             }
         }
 
-        document.addEventListener('DOMContentLoaded', initAuth);
+        document.addEventListener('DOMContentLoaded', initFirebase);
 
     </script>
 </head>
@@ -181,23 +214,23 @@
 
         <main>
             <div id="auth-status" class="text-center mb-6 p-3 rounded-lg bg-blue-100 text-blue-600 font-semibold border-2 border-blue-300 transition-colors duration-300">
-                🔄 Intentando acceso automático...
+                🔄 Conectando a Firebase...
             </div>
             
             <form onsubmit="event.preventDefault(); handleLogin();" class="space-y-6">
                 
                 <div>
-                    <label for="username" class="block text-sm font-bold text-gray-700 mb-2">Matrícula o ID de Usuario</label>
-                    <input type="text" id="username" value="Tu ID de Acceso Único" readonly
-                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-gray-50 font-mono text-gray-600 transition-colors shadow-inner" 
-                            placeholder="Ej: u12345678" aria-label="ID de Usuario">
+                    <label for="email" class="block text-sm font-bold text-gray-700 mb-2">Correo Electrónico</label>
+                    <input type="email" id="email" required
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white font-mono text-gray-800 transition-colors shadow-inner" 
+                            placeholder="ejemplo@email.com" aria-label="Correo Electrónico">
                 </div>
 
                 <div>
-                    <label for="password" class="block text-sm font-bold text-gray-700 mb-2">Contraseña (Token)</label>
-                    <input type="password" id="password" value="******" readonly
-                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-gray-50 font-mono text-gray-600 transition-colors shadow-inner" 
-                            placeholder="Mantenida en secreto" aria-label="Contraseña">
+                    <label for="password" class="block text-sm font-bold text-gray-700 mb-2">Contraseña</label>
+                    <input type="password" id="password" required
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white font-mono text-gray-800 transition-colors shadow-inner" 
+                            placeholder="Tu Contraseña Secreta" aria-label="Contraseña">
                 </div>
                 
                 <button type="submit" id="login-button" disabled
@@ -207,7 +240,7 @@
             </form>
             
             <p class="text-xs text-center text-gray-500 mt-6">
-                *El acceso se realiza automáticamente a través de credenciales seguras proporcionadas por el entorno de Canvas.
+                *Debes ingresar credenciales válidas registradas en el sistema de Firebase Auth.
             </p>
 
         </main>
