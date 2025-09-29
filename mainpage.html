@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Curso Intensivo de Japonés para la Salud</title>
+    <!-- Carga de Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Estilos personalizados para transiciones suaves y el estado colapsado */
@@ -68,7 +69,6 @@
         /* Estilos específicos para cada botón manga */
         .manga-instagram {
             border-color: #4f46e5; /* Indigo */
-            box-shadow: 0.5rem 0.5rem 0 #4f46e5;
         }
         .manga-classroom {
             border-color: #16a34a; /* Green 700 */
@@ -93,19 +93,11 @@
 
         // Configuraciones de Firebase (Globales obligatorias en este entorno)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        
-        // ********************************************************************
-        // ************ LÓGICA DE RECUPERACIÓN DE AUTENTICACIÓN ***************
-        // ********************************************************************
-        // Usamos la configuración y el token de la sesión almacenada en sessionStorage (del login)
-        const firebaseConfig = JSON.parse(sessionStorage.getItem('firebaseConfig')) || (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
-        const sessionToken = sessionStorage.getItem('firebaseIdToken');
-        const sessionUid = sessionStorage.getItem('firebaseUid');
-        // Usamos el token de sesión si existe, sino, el token inicial/dummy
-        const authToUse = sessionToken || (typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null);
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let db, auth;
-        let userId = sessionUid || 'loading...'; // Usar UID de la sesión si existe, o 'loading...'
+        let userId = 'loading...';
         let isSidebarExpanded = true; 
 
         // ====================================================================
@@ -309,17 +301,15 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // Usar el token recuperado de sessionStorage o el inicial/dummy.
-                if (authToUse) {
-                    await signInWithCustomToken(auth, authToUse);
-                    document.getElementById('firebase-status').textContent = 'Conectado (Token Personalizado)';
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
-                    document.getElementById('firebase-status').textContent = 'Conectado (Anónimo)';
                 }
 
                 userId = auth.currentUser?.uid || 'anon_' + crypto.randomUUID();
                 document.getElementById('user-id-display').textContent = `ID de Usuario: ${userId}`;
+                document.getElementById('firebase-status').textContent = 'Conectado (Firestore)';
                 document.getElementById('firebase-status').classList.add('text-green-600');
 
                 const docRef = getDocRef(db, userId);
@@ -371,25 +361,6 @@
             } catch (error) {
                 console.error("Error guardando progreso en Firestore:", error);
             }
-        }
-        
-        // ====================================================================
-        // 2.1. LÓGICA DE CIERRE DE SESIÓN
-        // ====================================================================
-        
-        function logout() {
-            // 1. Limpiar el almacenamiento de la sesión
-            sessionStorage.removeItem('firebaseIdToken');
-            sessionStorage.removeItem('firebaseUid');
-            sessionStorage.removeItem('firebaseConfig');
-
-            // 2. Cerrar la sesión de Firebase (opcional, si el usuario no es anónimo)
-            if (auth) {
-                auth.signOut().catch(e => console.error("Error al cerrar sesión de Firebase:", e));
-            }
-
-            // 3. Recargar la página para volver al estado de "no logueado" o anónimo.
-            window.location.reload(); 
         }
 
         // Fallback a Local Storage (si Firebase no está disponible)
@@ -668,14 +639,14 @@
             currentLessonQuiz = lesson.quiz;
 
             headerElement.textContent = `${moduleContainer.title.split(':')[0]} - ${lesson.title.split(':')[0]}`;
-
+            
             mainContent.innerHTML = `
                 <div class="max-w-4xl mx-auto w-full">
                     <header class="mb-8">
                         <h1 class="text-3xl font-bold text-indigo-700 mb-2">${lesson.title}</h1>
                         <p class="text-lg text-gray-600">Revisa el contenido y prepárate para el quiz.</p>
                     </header>
-
+                    
                     <section id="content-body" class="bg-white p-6 md:p-8 rounded-xl shadow-xl transition-opacity duration-300">
                     </section>
                     
@@ -692,17 +663,17 @@
                     </div>
                 </div>
             `;
-
+            
             // Si hay quiz, lo renderiza, si no, oculta el botón de práctica inicialmente
             if (currentLessonQuiz && currentLessonQuiz.length > 0) {
-                renderQuiz();
-                practiceButton.classList.remove('hidden');
+                 renderQuiz();
+                 practiceButton.classList.remove('hidden');
             } else {
                  document.getElementById('quiz-area').innerHTML = `
-                    <p class="text-lg text-red-500 font-semibold p-4 bg-red-50 rounded-lg">Esta lección no tiene un quiz asociado o está bloqueada.</p>
-                 `;
-                 practiceButton.classList.add('hidden');
+                    <p class="text-lg text-red-500 font-semibold p-4 bg-red-50 rounded-lg">Esta lección no tiene un quiz asociado o está bloqueada.</p>`;
+                practiceButton.classList.add('hidden');
             }
+
 
             updatePracticeButtonState(topicId);
         }
@@ -712,7 +683,8 @@
             quizArea.innerHTML = `
                 <h3 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2 mt-8">Quiz de Práctica (Gana 5 Gemas por acierto)</h3>
                 <div id="quiz-questions" class="space-y-6">
-                    </div>
+                    <!-- Preguntas van aquí -->
+                </div>
                 <div id="quiz-feedback" class="mt-6 p-4 rounded-lg hidden"></div>
                 <button onclick="checkQuiz()" id="check-quiz-button" class="mt-6 w-full px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors">
                     Verificar Respuestas
@@ -721,7 +693,7 @@
                     Saltar Quiz (Riesgo de perder Vidas)
                 </button>
             `;
-
+            
             const questionsContainer = document.getElementById('quiz-questions');
             currentLessonQuiz.forEach((q, index) => {
                 const qDiv = document.createElement('div');
@@ -746,7 +718,7 @@
             let correctAnswers = 0;
             const totalQuestions = currentLessonQuiz.length;
             let firstIncorrect = false;
-
+            
             currentLessonQuiz.forEach((q, index) => {
                 const selectedOption = document.querySelector(`input[name="question-${index}"]:checked`);
                 const resultDiv = document.getElementById(`result-${index}`);
@@ -765,12 +737,9 @@
                     } else {
                         resultDiv.textContent = 'Incorrecto. La respuesta correcta es: ' + q.options[q.answer];
                         resultDiv.classList.add('text-red-600');
-                        
                         if (selectedOption) {
-                            selectedOption.closest('label').classList.add('bg-red-100');
+                           selectedOption.closest('label').classList.add('bg-red-100');
                         }
-                        
-                        // Solo aplica la penalización de vida una vez por intento de quiz
                         if (!firstIncorrect) {
                             if (userLives > 0) {
                                 userLives--;
@@ -779,7 +748,7 @@
                                 showMessage('¡Te has quedado sin Vidas! Practica más antes de continuar.', 'error');
                             }
                             document.getElementById('lives-count').textContent = userLives;
-                            saveProgress(); 
+                            saveProgress();
                             firstIncorrect = true;
                         }
                     }
@@ -805,295 +774,460 @@
                 feedbackDiv.classList.add('bg-red-100', 'text-red-700');
                 quizCompleted = false;
             }
-
             updatePracticeButtonState(currentTopicId);
         }
 
         function skipQuiz() {
-            const feedbackDiv = document.getElementById('quiz-feedback');
-            feedbackDiv.classList.remove('hidden', 'bg-red-100', 'bg-green-100');
-            feedbackDiv.classList.add('bg-yellow-100', 'text-yellow-700', 'p-4', 'font-bold');
-            feedbackDiv.textContent = 'Has saltado el quiz. ¡No hay Gemas por saltar!';
-            quizCompleted = true; // Permite marcar aunque se haya saltado
-
-            updatePracticeButtonState(currentTopicId);
+             const feedbackDiv = document.getElementById('quiz-feedback');
+             feedbackDiv.classList.remove('hidden', 'bg-red-100', 'bg-green-100');
+             feedbackDiv.classList.add('bg-yellow-100', 'text-yellow-700', 'p-4', 'font-bold');
+             feedbackDiv.textContent = 'Has saltado el quiz. ¡No hay Gemas por saltar!';
+             quizCompleted = true; // Permite marcar aunque se haya saltado
+             updatePracticeButtonState(currentTopicId);
         }
+
 
         function updatePracticeButtonState(topicId) {
             const practiceButton = document.getElementById('practice-button');
             const isPracticed = practicedTopics.has(topicId);
-
+            
             if (isPracticed) {
-                practiceButton.disabled = true;
-                practiceButton.textContent = '¡Lección Practicada! ✅';
-                practiceButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'bg-red-600', 'hover:bg-red-700');
-                practiceButton.classList.add('bg-green-600', 'hover:bg-green-700');
-                practiceButton.onclick = null;
-                return;
-            }
-
-            if (userLives <= 0) {
+                 practiceButton.disabled = true;
+                 practiceButton.textContent = '¡Lección Practicada! ✅';
+                 practiceButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'bg-red-600', 'hover:bg-red-700');
+                 practiceButton.classList.add('bg-green-600', 'hover:bg-green-700');
+            } else if (userLives <= 0) {
                  practiceButton.disabled = true;
                  practiceButton.textContent = 'Vidas Agotadas. Recarga para continuar.';
-                 practiceButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'bg-red-600', 'hover:bg-red-700');
-                 practiceButton.classList.add('bg-gray-400');
-                 practiceButton.onclick = () => showMessage('¡Necesitas Gemas para recargar una Vida!', 'error'); 
-                 return;
-            }
-
-            if (quizCompleted) {
-                practiceButton.disabled = false;
-                practiceButton.textContent = 'Marcar Lección como Practicada (Ganas 10 Gemas)';
-                practiceButton.classList.remove('bg-gray-400', 'bg-red-600', 'hover:bg-red-700');
-                practiceButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
-                practiceButton.onclick = () => markAsPracticed(topicId);
+                 practiceButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'bg-green-600', 'hover:bg-green-700');
+                 practiceButton.classList.add('bg-red-600', 'hover:bg-red-700');
             } else {
-                practiceButton.disabled = true;
-                practiceButton.textContent = 'Completa el Quiz para Practicar';
-                practiceButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'bg-red-600', 'hover:bg-red-700');
-                practiceButton.classList.add('bg-gray-400');
-                practiceButton.onclick = null;
+                 practiceButton.disabled = !quizCompleted;
+                 practiceButton.textContent = 'Marcar como Practicado';
+                 practiceButton.classList.remove('bg-green-600', 'hover:bg-green-700', 'bg-red-600', 'hover:bg-red-700');
+                 practiceButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
             }
         }
 
-
-        function markAsPracticed(topicId) {
-            if (!practicedTopics.has(topicId)) {
-                practicedTopics.add(topicId);
-                userGems += 10; // 10 Gemas adicionales por completar la lección
+        function markAsPracticed() {
+            if (currentTopicId && !practicedTopics.has(currentTopicId) && quizCompleted) {
+                practicedTopics.add(currentTopicId);
                 saveProgress();
-                showMessage('¡Lección completada! Has ganado 10 Gemas adicionales 💎.', 'success');
-                
-                // Carga la siguiente lección
-                const allLessons = getSequentialLessonList();
-                const currentLessonIndex = allLessons.findIndex(l => l.id === topicId);
-
-                if (currentLessonIndex < allLessons.length - 1) {
-                    const nextLessonId = allLessons[currentLessonIndex + 1].id;
-                    // Retrasamos la carga para que el usuario vea el mensaje de éxito
-                    setTimeout(() => {
-                        loadTopic(nextLessonId);
-                    }, 2500);
-                } else {
-                    renderLearningPath(); // Vuelve al mapa si es la última lección.
-                }
+                showMessage('Lección marcada como practicada y guardada. ¡Continúa con la siguiente!', 'success');
+                currentTopicId = null; 
+                renderLearningPath(); 
+                document.getElementById('practice-button').classList.add('hidden'); 
+            } else if (practicedTopics.has(currentTopicId)) {
+                showMessage('Esta lección ya ha sido marcada.', 'info');
+            } else if (!quizCompleted) {
+                showMessage('Debes completar el quiz o saltarlo para marcar la lección.', 'error');
             }
-            updatePracticeButtonState(topicId);
-            renderSyllabus(); 
         }
 
         function showMessage(message, type = 'info') {
-            const messageBar = document.getElementById('message-bar');
-            messageBar.textContent = message;
-            messageBar.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-yellow-500', 'animate-bounce-slow');
+            const container = document.body;
+            let messageDiv = document.getElementById('status-message');
+            if (messageDiv) messageDiv.remove();
 
+            messageDiv = document.createElement('div');
+            messageDiv.id = 'status-message';
+            
+            let bgColor = 'bg-blue-100 border-blue-500 text-blue-700';
             if (type === 'success') {
-                messageBar.classList.add('bg-green-500');
+                bgColor = 'bg-green-100 border-green-500 text-green-700';
             } else if (type === 'error') {
-                messageBar.classList.add('bg-red-500', 'animate-bounce-slow');
-            } else {
-                messageBar.classList.add('bg-yellow-500');
+                bgColor = 'bg-red-100 border-red-500 text-red-700';
+            } else if (type === 'info') {
+                 bgColor = 'bg-yellow-100 border-yellow-500 text-yellow-700';
             }
 
-            // Ocultar después de 5 segundos
+            messageDiv.className = `fixed bottom-4 left-1/2 -translate-x-1/2 p-4 rounded-xl shadow-xl border-l-4 ${bgColor} z-50 transition-all duration-300 transform animate-bounce-slow`;
+            messageDiv.textContent = message;
+
+            container.appendChild(messageDiv);
+
             setTimeout(() => {
-                messageBar.classList.add('hidden');
-            }, 5000);
-        }
-
-        // ====================================================================
-        // 6. LÓGICA DE LA TIENDA DE VIDAS
-        // ====================================================================
-
-        function openShopModal() {
-            document.getElementById('shop-modal').classList.remove('hidden');
-        }
-
-        function closeShopModal() {
-            document.getElementById('shop-modal').classList.add('hidden');
-        }
-
-        function buyLife() {
-            const cost = 10; // 10 gemas por vida
-            if (userGems >= cost) {
-                userGems -= cost;
-                userLives += 1;
-                saveProgress();
-                document.getElementById('lives-count').textContent = userLives;
-                document.getElementById('gems-count').textContent = userGems;
-                showMessage(`¡Has comprado 1 Vida! Vidas restantes: ${userLives} (+1)`, 'success');
-                updatePracticeButtonState(currentTopicId); // Actualizar estado si las vidas estaban a 0
-            } else {
-                showMessage('¡No tienes suficientes Gemas para comprar una Vida! 😔', 'error');
-            }
-        }
-
-
-        // ====================================================================
-        // 7. INICIALIZACIÓN
-        // ====================================================================
-
-        window.onload = () => {
-            initialSidebarSetup();
-            // Inicia Firebase y carga el progreso automáticamente
-            initFirebase(); 
-            // Inicializa la vista por defecto al mapa de aprendizaje
-            renderLearningPath();
-            document.getElementById('toggle-sidebar-btn').onclick = toggleSidebar;
-            document.getElementById('close-mobile-sidebar').onclick = toggleSidebar;
-
-             // Hacer la función logout accesible globalmente
-            window.logout = logout;
-        };
-
-        // Escucha el evento de redimensionamiento de ventana
-        window.onresize = () => {
-            if (window.innerWidth >= 768) {
-                const sidebar = document.getElementById('sidebar');
-                const mainContentArea = document.getElementById('main-content-area');
-                // Al pasar a desktop, asegurar que sidebar tiene w-80 y main-content-area ml-80
-                if (sidebar.classList.contains('w-20') || sidebar.classList.contains('-translate-x-full')) {
-                     sidebar.classList.remove('w-20', 'fixed', '-translate-x-full');
-                     sidebar.classList.add('w-80', 'md:relative', 'md:translate-x-0');
-                     mainContentArea.classList.remove('md:ml-20');
-                     mainContentArea.classList.add('md:ml-80');
-                     document.getElementById('app').classList.remove('sidebar-collapsed');
-                     isSidebarExpanded = true;
+                if (messageDiv) {
+                    messageDiv.classList.remove('animate-bounce-slow');
+                    messageDiv.classList.add('opacity-0', 'scale-90');
+                    setTimeout(() => messageDiv.remove(), 300);
                 }
-            } else {
-                // Modo móvil: Si está expandido, debe estar en overlay
-                 if (isSidebarExpanded) {
-                    document.getElementById('sidebar').classList.remove('-translate-x-full');
-                 } else {
-                    document.getElementById('sidebar').classList.add('-translate-x-full');
-                 }
-                 document.getElementById('app').classList.remove('sidebar-collapsed');
-            }
-        };
+            }, 3000);
+        }
 
+        // ====================================================================
+        // 6. LÓGICA DEL FOOTER DINÁMICO Y ENLACES EXTERNOS
+        // ====================================================================
+
+        // NUEVAS CONSTANTES DE ENLACES ESPECÍFICOS
+        const ZV_INSTAGRAM = 'https://www.instagram.com/zvacademy_vzla';
+        const SUGAWARA_INSTAGRAM = 'https://www.instagram.com/fundacionsugawara';
+        const GOOGLE_CLASSROOM = 'https://classroom.google.com/c/NzgwNTAwNDE2NjU2?cjc=zhpwyng4';
+        const DUOLINGO_SCHOOLS = 'https://schools.duolingo.com/classroom/8504538';
+        // FIN NUEVAS CONSTANTES
+
+        const MESSAGES = [
+            "SÍGUENOS EN INSTAGRAM COMO...", // Index 0 -> ZVA Academy (Español)
+            "インスタグラムでフォローしてください..." // Index 1 -> Fundación Sugawara (Japonés)
+        ];
+        
+        const INSTAGRAM_BUTTON_DATA = [
+            { 
+                link: ZV_INSTAGRAM, 
+                text: '¡SÍGUENOS! (ZVA Academy)',
+                bgClass: 'bg-purple-600', 
+                shadowColor: '#6d28d9', // Deep Purple
+                mangaClass: 'manga-instagram',
+            },
+            { 
+                link: SUGAWARA_INSTAGRAM, 
+                text: 'フォロー! (Sugawara Foundation)', 
+                bgClass: 'bg-red-600', 
+                shadowColor: '#dc2626', // Deep Red
+                mangaClass: 'manga-instagram',
+            }
+        ];
+
+        let messageIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        let typingSpeed = 100;
+        let currentInstagramLink = ZV_INSTAGRAM; // Estado inicial
+
+        function typeWriter() {
+            const typingElement = document.getElementById('typing-text');
+            if (!typingElement) return;
+
+            const currentMessage = MESSAGES[messageIndex];
+
+            if (isDeleting) {
+                typingElement.textContent = currentMessage.substring(0, charIndex - 1);
+                charIndex--;
+                typingSpeed = 50; // Velocidad de borrado rápida
+            } else {
+                typingElement.textContent = currentMessage.substring(0, charIndex + 1);
+                charIndex++;
+                typingSpeed = 100; // Velocidad de escritura normal
+            }
+
+            if (!isDeleting && charIndex === currentMessage.length) {
+                isDeleting = true;
+                typingSpeed = 2000; // Pausa antes de borrar
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                messageIndex = (messageIndex + 1) % MESSAGES.length;
+                updateFooterButton(messageIndex); // Actualiza el botón al cambiar de mensaje
+                typingSpeed = 500; // Pausa antes de empezar la siguiente frase
+            }
+
+            setTimeout(typeWriter, typingSpeed);
+        }
+
+        function updateFooterButton(index) {
+            const buttonElement = document.getElementById('instagram-button');
+            const data = INSTAGRAM_BUTTON_DATA[index];
+            
+            if (buttonElement && data) {
+                currentInstagramLink = data.link; 
+
+                buttonElement.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 inline mr-2 align-text-bottom">
+                        <path fill-rule="evenodd" d="M12.315 2c2.43 0 2.723.01 3.696.043.974.034 1.761.272 2.414.536.653.264 1.25.626 1.766 1.142.516.516.878 1.163 1.142 1.766.264.653.502 1.44.536 2.414.033.973.043 1.265.043 3.696s-.01 2.723-.043 3.696c-.034.974-.272 1.761-.536 2.414-.264.653-.626 1.25-1.142 1.766-.516.516-1.163.878-1.766 1.142-.653.264-1.44.502-2.414.536-.973.033-1.265.043-3.696.043s-2.723-.01-3.696-.043c-.974-.034-1.761-.272-2.414-.536-.653-.264-1.25-.626-1.766-1.142-.516-.516-.878-1.163-1.142-1.766-.264-.653-.502-1.44-.536-2.414-.033-.973-.043-1.265-.043-3.696s.01-2.723.043-3.696c.034-.974.272-1.761.536-2.414.264-.653.626 1.25 1.142 1.766.516.516 1.163.878 1.766 1.142.653.264 1.44.502 2.414.536.973.033 1.265.043 3.696.043zM12 5.86c-3.393 0-6.14 2.747-6.14 6.14s2.747 6.14 6.14 6.14 6.14-2.747 6.14-6.14-2.747-6.14-6.14-6.14zm4.237 1.487c-.636 0-1.15.514-1.15 1.15s.514 1.15 1.15 1.15 1.15-.514 1.15-1.15-.514-1.15-1.15-1.15zm-4.237 8.526c-1.294 0-2.343-1.05-2.343-2.343s1.05-2.343 2.343-2.343 2.343 1.05 2.343 2.343-1.05 2.343-2.343 2.343z" clip-rule="evenodd"/>
+                    </svg>
+                    ${data.text}
+                `;
+                
+                // Limpiar clases de fondo y sombra manga-instagram
+                const allMangaClasses = INSTAGRAM_BUTTON_DATA.map(d => d.bgClass);
+                buttonElement.classList.remove(...allMangaClasses);
+                buttonElement.classList.remove(INSTAGRAM_BUTTON_DATA[0].mangaClass);
+                
+                buttonElement.classList.add(data.bgClass);
+                buttonElement.classList.add(data.mangaClass);
+                
+                // Actualiza la sombra para el efecto manga
+                buttonElement.style.boxShadow = `0.5rem 0.5rem 0 ${data.shadowColor}`;
+            }
+        }
+
+        // Función reutilizable para abrir enlaces en nueva pestaña
+        function openExternalLink(url) {
+            window.open(url, '_blank');
+        }
+
+        window.goToInstagram = () => openExternalLink(currentInstagramLink); 
+        window.goToClassroom = () => openExternalLink(GOOGLE_CLASSROOM);
+        window.goToDuolingo = () => openExternalLink(DUOLINGO_SCHOOLS);
+        
+        window.loadTopic = loadTopic;
+        window.markAsPracticed = markAsPracticed;
+        window.checkQuiz = checkQuiz;
+        window.skipQuiz = skipQuiz;
+        window.renderLearningPath = renderLearningPath;
+        window.toggleCredentialsModal = toggleCredentialsModal;
+
+        // ====================================================================
+        // 7. LÓGICA DEL MODAL DE CREDENCIALES
+        // ====================================================================
+
+        function toggleCredentialsModal() {
+            const modal = document.getElementById('credentials-modal');
+            modal.classList.toggle('hidden');
+            
+            // Credenciales simuladas: 
+            // Nombre (simulado) y ID de usuario real de Firebase
+            const credentials = {
+                // En una aplicación real, esto se cargaría desde el perfil de Firebase/Firestore
+                name: `Taro Yamada (Alumno Fisioterapeuta)`, 
+                user_id: userId,
+                password: `Katakana${appId.substring(0, 4)}!`
+            };
+
+            document.getElementById('modal-name').textContent = credentials.name;
+            document.getElementById('modal-userid').textContent = credentials.user_id;
+            document.getElementById('modal-password').textContent = credentials.password;
+        }
+
+        function copyToClipboard(elementId, feedbackId) {
+            const textToCopy = document.getElementById(elementId).textContent;
+            
+            // Usar una técnica de copiado compatible con el iFrame (document.execCommand)
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            document.body.appendChild(textArea);
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                const feedback = document.getElementById(feedbackId);
+                feedback.textContent = '¡Copiado!';
+                feedback.classList.remove('opacity-0');
+                feedback.classList.add('opacity-100');
+                
+                setTimeout(() => {
+                    feedback.classList.remove('opacity-100');
+                    feedback.classList.add('opacity-0');
+                }, 1500);
+
+            } catch (err) {
+                console.error('Error al copiar:', err);
+                showMessage('No se pudo copiar el texto.', 'error');
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        }
+        
+        window.copyToClipboard = copyToClipboard;
+
+        
+        // ====================================================================
+        // 8. INICIALIZACIÓN Y EVENTOS
+        // ====================================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initFirebase(); 
+            initialSidebarSetup(); // Configura el estado inicial del sidebar
+            updateFooterButton(0); // Establece el estado inicial del botón (ZVA Academy)
+            typeWriter(); // Inicia la animación de la máquina de escribir
+
+            const toggleButton = document.getElementById('toggle-sidebar-button');
+            const mainContentArea = document.getElementById('main-content-area'); 
+            
+            toggleButton.addEventListener('click', toggleSidebar);
+            window.addEventListener('resize', initialSidebarSetup); // Responde a cambios de tamaño de pantalla
+
+            // Cierra el menú en móvil si el usuario hace clic fuera de él
+            if (mainContentArea) {
+                mainContentArea.addEventListener('click', () => {
+                     if (window.innerWidth < 768 && isSidebarExpanded) {
+                        toggleSidebar();
+                     }
+                });
+            }
+            
+            // Inicia la ruta de aprendizaje por defecto
+            renderLearningPath();
+        });
 
     </script>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="min-h-screen flex flex-col bg-gray-50">
 
-    <div id="message-bar" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 px-6 py-3 text-white font-semibold rounded-lg shadow-xl z-50 text-center transition-all duration-300">
-        Mensaje de Estado
-    </div>
-
-    <header id="header" class="fixed top-0 left-0 w-full h-20 bg-white border-b border-gray-200 shadow-md z-30">
-        <div class="h-full flex items-center justify-between px-4 md:px-6">
-            <button id="toggle-sidebar-btn" class="text-indigo-600 md:hidden p-2 rounded-md hover:bg-gray-100 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+    <!-- BARRA SUPERIOR FIJA DE ACCESOS RÁPIDOS -->
+    <header class="fixed top-0 left-0 right-0 h-20 bg-white border-b-4 border-indigo-600 shadow-xl z-40 flex items-center justify-end pr-4 md:pr-10">
+        <div class="flex items-center space-x-4">
+             <!-- Botón de Credenciales (Manga Style) -->
+            <button onclick="toggleCredentialsModal()" class="relative p-3 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-all duration-100 manga-button border-red-700 font-bold" style="box-shadow: 0 0.3rem 0 #b91c1c;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                    <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a5.25 5.25 0 0010.5 0v-3c0-2.9-2.35-5.25-5.25-5.25zm-3.75 8.25v-3c0-2.07 1.68-3.75 3.75-3.75s3.75 1.68 3.75 3.75v3h-7.5zM18.75 16.5a1.5 1.5 0 00-1.5 1.5v3a1.5 1.5 0 001.5 1.5h-13.5a1.5 1.5 0 00-1.5-1.5v-3a1.5 1.5 0 001.5-1.5h13.5z" clip-rule="evenodd" />
                 </svg>
+                <span class="sr-only">Credenciales</span>
+            </button>
+            
+            <!-- Google Classroom Button (Fixed Top) -->
+            <button id="classroom-button-top" onclick="goToClassroom()" class="manga-button manga-classroom bg-green-500 text-white font-black text-sm md:text-base px-3 py-1 md:px-4 md:py-2 rounded-lg tracking-wider whitespace-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 inline mr-1 align-text-bottom">
+                    <path d="M5 21a2 2 0 01-2-2v-6a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2H5zM5 13a1 1 0 00-1 1v4a1 1 0 001 1h14a1 1 0 001-1v-4a1 1 0 00-1-1H5zM12 9a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                </svg>
+                Classroom
             </button>
 
-            <h1 id="header-title" class="text-xl md:text-2xl font-extrabold text-gray-800 flex-1 ml-4 md:ml-0 truncate">
-                Curso Intensivo de Japonés para la Salud
-            </h1>
-
-            <div class="flex items-center space-x-4">
-                <button onclick="openShopModal()" class="flex items-center p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors shadow-md">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-                        <path d="M11.644 3.25c.524-.96 1.458-.96 1.982 0l3.882 7.152c.11.202.26.386.443.535l4.887 4.195a1.85 1.85 0 01-.89 3.251H2.766a1.85 1.85 0 01-.89-3.251l4.887-4.195a1.85 1.85 0 00.443-.535l3.882-7.152z" />
-                    </svg>
-                    <span id="lives-count" class="ml-2 font-bold text-lg">5</span>
-                </button>
-
-                <div class="flex items-center p-2 rounded-full bg-blue-100 text-blue-600 shadow-md">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-                        <path fill-rule="evenodd" d="M11.54 22.351A2.174 2.174 0 0012 22.5c.27 0 .53-.081.74-.219L16.5 19.5 7.5 19.5l3.76-3.85c.19-.199.45-.301.74-.301s.55.102.74.301l.76 2.05h3.08a.75.75 0 010 1.5H16.5l-3.26 3.01zM4.17 14.5a.75.75 0 00.75-.75V8.5h15V13.75a.75.75 0 001.5 0V8.5a2.25 2.25 0 00-2.25-2.25h-15A2.25 2.25 0 003.5 8.5v5.25a.75.75 0 00.67.74zM12 7.5a.75.75 0 00-.75.75v3.75a.75.75 0 001.5 0V8.25a.75.75 0 00-.75-.75z" clip-rule="evenodd" />
-                    </svg>
-                    <span id="gems-count" class="ml-2 font-bold text-lg">0</span>
-                </div>
-
-                <button id="practice-button" onclick="markAsPracticed(currentTopicId)" class="hidden px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-lg">
-                    Practicar Lección
-                </button>
-            </div>
+            <!-- Duolingo for Schools Button (Fixed Top) -->
+             <button id="duolingo-button-top" onclick="goToDuolingo()" class="manga-button manga-duolingo bg-amber-500 text-white font-black text-sm md:text-base px-3 py-1 md:px-4 md:py-2 rounded-lg tracking-wider whitespace-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 inline mr-1 align-text-bottom">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.33 14.61c-.55.13-1.07.21-1.61.21-2.91 0-5.27-2.36-5.27-5.27s2.36-5.27 5.27-5.27c.54 0 1.06.08 1.61.21l1.72 1.72-1.72 1.72L15.3 12l-1.72-1.72-1.72 1.72-1.72-1.72 1.72-1.72 1.72 1.72 1.72 1.72z" clip-rule="evenodd"/>
+                </svg>
+                Duolingo
+            </button>
         </div>
     </header>
 
-    <div id="app" class="flex min-h-screen">
-        
-        <nav id="sidebar" class="fixed md:relative w-80 h-full bg-white border-r border-gray-200 z-40 p-4 pt-8 overflow-y-auto flex-shrink-0 -translate-x-full md:translate-x-0">
+    <div id="app" class="flex flex-1 overflow-hidden">
+        <!-- Sidebar de Navegación (Temario) -->
+        <aside id="sidebar" class="sidebar bg-white border-r border-gray-200 p-4 shadow-lg overflow-y-auto transition-all duration-300 transform fixed md:relative h-full z-20 w-80 -translate-x-full md:translate-x-0 pt-20">
             
-            <div class="sticky top-0 bg-white pt-1 pb-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h2 id="sidebar-title" class="text-3xl font-extrabold text-indigo-700 transition-opacity duration-300">
-                        Nihongo Pro
-                    </h2>
-                    <button id="toggle-icon" onclick="toggleSidebar()" class="hidden md:block p-1 text-gray-400 hover:text-gray-600 transition-transform duration-300">
-                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-                            <path fill-rule="evenodd" d="M11.03 3.024a.75.75 0 01-.19.748L5.94 9.497l4.899 5.725a.75.75 0 11-1.138.972l-5.32-6.213a.75.75 0 010-.972l5.32-6.213a.75.75 0 01.94-.134z" clip-rule="evenodd" />
-                            <path fill-rule="evenodd" d="M20.25 15.513l-4.898 5.725a.75.75 0 01-1.139-.972l5.32-6.213a.75.75 0 010-.972l-5.32-6.213a.75.75 0 111.139-.972l4.898 5.725a.75.75 0 01.19.748z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                     <button id="close-mobile-sidebar" class="md:hidden p-1 text-gray-400 hover:text-gray-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-                            <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="mt-4 space-y-3 pb-4 border-b border-gray-200">
-                <a href="#" class="sidebar-text flex items-center p-2 rounded-lg manga-button manga-instagram bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all shadow-md">
-                    <span class="text-xl font-mono">IG</span>
-                    <span class="ml-3 font-bold">Instagram (Vocabulario)</span>
-                </a>
-                <a href="#" class="sidebar-text flex items-center p-2 rounded-lg manga-button manga-classroom bg-green-50 text-green-700 hover:bg-green-100 transition-all shadow-md">
-                    <span class="text-xl font-mono">GC</span>
-                    <span class="ml-3 font-bold">Google Classroom (Tareas)</span>
-                </a>
-                 <a href="#" class="sidebar-text flex items-center p-2 rounded-lg manga-button manga-duolingo bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all shadow-md">
-                    <span class="text-xl font-mono">DL</span>
-                    <span class="ml-3 font-bold">Duolingo (Práctica Diaria)</span>
-                </a>
-            </div>
-
-            <div id="topic-list" class="mt-4">
-                </div>
-
-            <div id="firebase-info" class="sidebar-text mt-6 text-xs text-gray-500 transition-opacity duration-300">
-                <div class="font-bold text-gray-700">Perfil/Estado de la Sesión:</div>
-                <p id="user-id-display" class="truncate">ID de Usuario: loading...</p>
-                <p id="firebase-status" class="font-semibold mt-1">Desconectado</p>
-                <button onclick="logout()" class="mt-2 w-full text-center py-1 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors shadow-md">
-                    Cerrar Sesión
+            <!-- Encabezado y Botón de Alternancia -->
+            <div class="flex items-center justify-between mb-6">
+                <h2 id="sidebar-title" class="text-2xl font-bold text-gray-800 transition-opacity duration-300 sidebar-text">
+                    Curso Intensivo 👩‍⚕️🇯🇵
+                </h2>
+                <!-- Botón de Alternancia (Se usa en móvil y desktop para el toggleSidebar) -->
+                <button id="toggle-sidebar-button" class="p-2 rounded-full hover:bg-gray-100 transition-transform duration-300">
+                     <!-- Icono de flecha/hamburguesa -->
+                    <svg id="toggle-icon" class="w-6 h-6 text-indigo-600 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+                    </svg>
                 </button>
             </div>
-        </nav>
 
-        <main id="main-content-area" class="flex-1 transition-all duration-300 md:ml-80">
-            <div class="p-4 md:p-8 pt-20">
-                <div id="main-content-wrapper">
+            <div id="firebase-info" class="text-xs mb-4 p-2 bg-gray-50 rounded-lg border transition-opacity duration-300">
+                <p id="user-id-display" class="font-semibold text-gray-700 sidebar-text">ID de Usuario: Conectando...</p>
+                <p id="firebase-status" class="text-blue-600 sidebar-text">Estado: Conectando a Firestore...</p>
+            </div>
+            <div id="topic-list">
+                <!-- Los módulos se cargarán aquí por JS -->
+            </div>
+        </aside>
+
+        <!-- Área de Contenido Principal -->
+        <main id="main-content-area" class="flex-1 p-6 md:p-10 overflow-y-auto pb-20 md:ml-80"> <!-- ml-80 por defecto, ajustado por JS/CSS -->
+            <div class="max-w-4xl mx-auto">
+                
+                <!-- HEADER GAMIFICADO (Ahora no es fijo, pues la barra de arriba lo es) -->
+                <div class="bg-white p-4 rounded-xl shadow-md mb-8 flex justify-between items-center top-0 z-10">
+                    <h1 id="header-title" class="text-xl font-bold text-gray-800 cursor-pointer hover:text-indigo-600 transition-colors" onclick="renderLearningPath()">
+                        Camino de Aprendizaje Japonés PRO
+                    </h1>
+                    <div class="flex space-x-4">
+                        <span class="flex items-center text-lg font-semibold text-yellow-600">
+                            <!-- Icono de Gema -->
+                            <svg xmlns="http://www.w3.org/2d00/svg" class="w-6 h-6 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M11.99 2C6.47 2 2 6.47 2 12s4.47 10 9.99 10C17.52 22 22 17.53 22 12S17.52 2 11.99 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
+                            </svg>
+                            <span id="gems-count">0</span>
+                        </span>
+                        <span class="flex items-center text-lg font-semibold text-red-600">
+                            <!-- Icono de Vida -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.11C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                            </svg>
+                            <span id="lives-count">5</span>
+                        </span>
                     </div>
+                </div>
+
+                <div id="main-content-wrapper" class="relative">
+                    <!-- El Mapa de Progreso o el Contenido de la Lección se renderizará aquí -->
+                </div>
+                
+                <!-- Botón de Acción para la Práctica -->
+                <div class="mt-8 flex justify-end">
+                    <button id="practice-button" onclick="markAsPracticed()" class="px-8 py-3 bg-indigo-600 text-white font-semibold text-lg rounded-xl shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all duration-300 hidden disabled:opacity-50" disabled>
+                        Marcar como Practicado
+                    </button>
+                </div>
             </div>
         </main>
     </div>
 
-    <div id="shop-modal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-100">
-            <h3 class="text-3xl font-bold text-indigo-700 mb-4 border-b pb-2">Tienda de Vidas ❤️</h3>
-            <p class="text-gray-600 mb-6">Usa tus gemas (💎) para reponer tus vidas (❤️) y seguir practicando.</p>
+    <!-- FOOTER CON ANIMACIÓN DE MÁQUINA DE ESCRIBIR (Solo Instagram) -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t-4 border-indigo-600 shadow-2xl p-4 md:p-3 z-30 flex flex-col md:flex-row items-center justify-center space-y-2 md:space-y-0 md:space-x-8">
+        
+        <!-- Máquina de Escribir (Typing Animation) -->
+        <div class="text-base md:text-xl font-mono text-gray-800 flex-shrink-0 text-center">
+            <span id="typing-text" class="typing-cursor font-semibold"></span>
+        </div>
+
+        <!-- Botones de Redes Sociales -->
+        <div class="flex flex-wrap justify-center gap-4">
+            <!-- Instagram Button (Animación TypeWriter lo actualiza) -->
+            <button id="instagram-button" onclick="goToInstagram()" class="manga-button text-white font-black text-lg md:text-xl px-6 py-2 rounded-lg tracking-wider whitespace-nowrap transition-colors">
+                <!-- El icono y el texto se actualizan en JS -->
+            </button>
+        </div>
+    </footer>
+    
+    <!-- MODAL DE CREDENCIALES (Hidden by default) -->
+    <div id="credentials-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm transform scale-100 transition-transform duration-300 border-4 border-indigo-600 relative">
             
-            <div class="p-4 border border-blue-200 bg-blue-50 rounded-lg flex items-center justify-between shadow-md">
-                <div class="flex items-center space-x-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-blue-500">
-                        <path fill-rule="evenodd" d="M11.54 22.351A2.174 2.174 0 0012 22.5c.27 0 .53-.081.74-.219L16.5 19.5 7.5 19.5l3.76-3.85c.19-.199.45-.301.74-.301s.55.102.74.301l.76 2.05h3.08a.75.75 0 010 1.5H16.5l-3.26 3.01zM4.17 14.5a.75.75 0 00.75-.75V8.5h15V13.75a.75.75 0 001.5 0V8.5a2.25 2.25 0 00-2.25-2.25h-15A2.25 2.25 0 003.5 8.5v5.25a.75.75 0 00.67.74zM12 7.5a.75.75 0 00-.75.75v3.75a.75.75 0 001.5 0V8.25a.75.75 0 00-.75-.75z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="text-2xl font-bold text-gray-800">1 Vida</span>
+            <!-- Icono de Cierre -->
+            <button onclick="toggleCredentialsModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7">
+                    <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            
+            <h3 class="text-2xl font-black text-indigo-700 mb-6 border-b pb-2">🔑 Datos de Perfil y Acceso</h3>
+            <p class="text-sm text-gray-600 mb-4">Esta es tu información de perfil. La Matrícula/ID es tu identificador único de Firebase.</p>
+            
+            <!-- Campo de Nombre y Apellido (Simulado) -->
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre y Apellido</label>
+                <div class="flex items-center space-x-2 bg-gray-100 p-3 rounded-lg border border-gray-300">
+                    <span id="modal-name" class="font-semibold text-gray-900 flex-1 break-all"></span>
+                    <button onclick="copyToClipboard('modal-name', 'name-feedback')" class="text-indigo-500 hover:text-indigo-700 flex-shrink-0 relative">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                            <path d="M7.5 7.5a3 3 0 100 6h4.5a3 3 0 100-6h-4.5z"/>
+                            <path fill-rule="evenodd" d="M15 2.25H4.5A2.25 2.25 0 002.25 4.5v15A2.25 2.25 0 004.5 21.75h10.5A2.25 2.25 0 0017.25 19.5v-4.69l3.56-3.56a1.5 1.5 0 000-2.12l-3.56-3.56v-4.69zM4.5 9h7.5A1.5 1.5 0 0013.5 7.5v-3H4.5v3z" clip-rule="evenodd" />
+                        </svg>
+                        <span id="name-feedback" class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs bg-indigo-500 text-white px-2 py-0.5 rounded opacity-0 transition-opacity duration-300">Copiado</span>
+                    </button>
                 </div>
-                
-                <button onclick="buyLife()" class="px-6 py-2 bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 transition-colors shadow-md flex items-center space-x-2">
-                    <span>Comprar</span>
-                    <span class="ml-2 font-mono">10 💎</span>
-                </button>
             </div>
 
-            <button onclick="closeShopModal()" class="mt-6 w-full py-2 text-gray-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors">
-                Cerrar Tienda
+            <!-- Campo de Matrícula/ID -->
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Matrícula/ID (Firebase UID)</label>
+                <div class="flex items-center space-x-2 bg-gray-100 p-3 rounded-lg border border-gray-300">
+                    <span id="modal-userid" class="font-mono text-gray-900 flex-1 break-all"></span>
+                    <button onclick="copyToClipboard('modal-userid', 'userid-feedback')" class="text-indigo-500 hover:text-indigo-700 flex-shrink-0 relative">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                            <path d="M7.5 7.5a3 3 0 100 6h4.5a3 3 0 100-6h-4.5z"/>
+                            <path fill-rule="evenodd" d="M15 2.25H4.5A2.25 2.25 0 002.25 4.5v15A2.25 2.25 0 004.5 21.75h10.5A2.25 2.25 0 0017.25 19.5v-4.69l3.56-3.56a1.5 1.5 0 000-2.12l-3.56-3.56v-4.69zM4.5 9h7.5A1.5 1.5 0 0013.5 7.5v-3H4.5v3z" clip-rule="evenodd" />
+                        </svg>
+                        <span id="userid-feedback" class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs bg-indigo-500 text-white px-2 py-0.5 rounded opacity-0 transition-opacity duration-300">Copiado</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Campo de Contraseña -->
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Contraseña (Simulada)</label>
+                <div class="flex items-center space-x-2 bg-gray-100 p-3 rounded-lg border border-gray-300">
+                    <span id="modal-password" class="font-mono text-gray-900 flex-1 break-all"></span>
+                    <button onclick="copyToClipboard('modal-password', 'pass-feedback')" class="text-indigo-500 hover:text-indigo-700 flex-shrink-0 relative">
+                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                            <path d="M7.5 7.5a3 3 0 100 6h4.5a3 3 0 100-6h-4.5z"/>
+                            <path fill-rule="evenodd" d="M15 2.25H4.5A2.25 2.25 0 002.25 4.5v15A2.25 2.25 0 004.5 21.75h10.5A2.25 2.25 0 0017.25 19.5v-4.69l3.56-3.56a1.5 1.5 0 000-2.12l-3.56-3.56v-4.69zM4.5 9h7.5A1.5 1.5 0 0013.5 7.5v-3H4.5v3z" clip-rule="evenodd" />
+                        </svg>
+                        <span id="pass-feedback" class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs bg-indigo-500 text-white px-2 py-0.5 rounded opacity-0 transition-opacity duration-300">Copiado</span>
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="toggleCredentialsModal()" class="w-full px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors">
+                Cerrar
             </button>
         </div>
     </div>
