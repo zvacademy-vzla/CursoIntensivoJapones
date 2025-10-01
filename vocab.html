@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japonés para Fisioterapeutas | Conversación Interactiva</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados y fuente Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+            
+            /* === EFECTO DOODLE DE FONDO === */
+            background-image: 
+                /* Círculo Azul Grande */
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                /* Círculo Amarillo Pequeño */
+                radial-gradient(circle at 90% 80%, rgba(251, 191, 36, 0.15) 0%, transparent 50%),
+                /* Círculo Verde Mediano */
+                radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+                /* Círculo Rojo Pequeño */
+                radial-gradient(circle at 30% 90%, rgba(239, 68, 68, 0.1) 0%, transparent 50%);
+            background-size: 300px 300px, 200px 200px, 400px 400px, 150px 150px;
+            background-repeat: repeat;
+        }
+        /* Asegura que el contenedor de la aplicación se eleve sobre el fondo */
+        #main-container {
+            z-index: 10;
+            position: relative;
+            transition: box-shadow 0.3s ease-out; /* Transición para el efecto de glow */
+        }
+        
+        .bg-correct-flash {
+            box-shadow: 0 0 30px 5px rgba(16, 185, 129, 0.7); /* green-500 glow */
+        }
+        
+        .bg-incorrect-flash {
+            box-shadow: 0 0 30px 5px rgba(239, 68, 68, 0.7); /* red-500 glow */
+        }
+        
+        /* --- ESTILOS DE LANDING PAGE Y ANIMACIÓN DE TÍTULO --- */
+
+        .title-text {
+            font-family: 'Inter', sans-serif;
+            font-weight: 900; /* Extra Black */
+            color: #1f2937; /* gray-800 */
+            text-shadow: 3px 3px 0 #3b82f6; /* Sombra azul para efecto de juego */
+            animation: bounceIn 1s ease-out;
+        }
+        
+        .start-animation {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.03);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes bounceIn {
+            0% {
+                transform: translateY(-50px) scale(0.5);
+                opacity: 0;
+            }
+            70% {
+                transform: translateY(10px) scale(1.05);
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+        
+        /* --- ANIMACIÓN MÁQUINA DE ESCRIBIR (TYPEWRITER) --- */
+        
+        /* El contenedor de texto japonés se ocultará inicialmente */
+        .typewriter-container {
+            overflow: hidden; /* Asegura que el texto no se muestre antes de la animación */
+            white-space: nowrap; /* Mantiene todo el texto en una sola línea */
+            letter-spacing: 0.15em; /* Espacio entre caracteres */
+            font-size: 3rem; /* Tamaño de fuente para el efecto */
+            border-right: .15em solid orange; /* El cursor */
+            width: 0; /* Ancho inicial cero */
+            animation: 
+                typing 3s steps(40, end) forwards,
+                blink-caret .75s step-end infinite;
+        }
+
+        /* La animación de escritura real (ajustar el número de steps al texto más largo) */
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+
+        /* Animación del cursor parpadeante */
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #3b82f6; } /* Color del cursor azul */
+        }
+        
+        /* Asegurarse de que el elemento que contiene el texto de la pregunta (si es fill_the_blank) 
+           no tenga la animación de máquina de escribir, sino el span interno. */
+        #japanese-phrase {
+            /* Contiene el texto antes de la animación */
+            min-height: 4rem; /* Mínima altura para evitar CLS (Cumulative Layout Shift) */
+        }
+
+        /* --- ESTILOS COMUNES --- */
+        
+        /* Clase para simular la transición de Duolingo */
+        .slide-in {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        /* Estilo base para los botones de selección y kanji */
+        .option-button {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 0 0 #d1d5db;
+            font-weight: 600;
+        }
+        
+        .option-button:hover:not([disabled]) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 0 #a1a1aa, 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+        
+        .hit-effect {
+            animation: hit 0.1s ease-out forwards;
+        }
+        @keyframes hit {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.03);
+                box-shadow: 0 4px 0 0 #60a5fa;
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        
+        /* Estilo para el botón de 'Continuar' */
+        #next-button, #start-button {
+            box-shadow: 0 4px 0 0 #1e40af;
+        }
+        #next-button:hover:not([disabled]), #start-button:hover:not([disabled]) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 0 #1e40af, 0 0 10px rgba(59, 130, 246, 0.7);
+        }
+        #next-button:active:not([disabled]), #start-button:active:not([disabled]) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 0 #1e40af;
+        }
+        
+        /* Estilo para el campo de entrada (romaji-input, name-input) */
+        .text-input {
+            border: 2px solid #ccc;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        .text-input:focus {
+            outline: none;
+            border-color: #3b82f6; 
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+
+
+        /* --- COLORES DE FEEDBACK --- */
+        .correct-answer { background-color: #d1fae5; border-color: #10b981; box-shadow: 0 4px 0 0 #065f46; }
+        .incorrect-answer { background-color: #fee2e2; border-color: #ef4444; box-shadow: 0 4px 0 0 #991b1b; }
+        .correct-text { color: #059669; font-weight: 700; }
+        .incorrect-text { color: #dc2626; font-weight: 700; }
+        #progress-bar { transition: width 0.3s ease-in-out; }
+
+        /* --- ESTILOS DE TOOLTIP (Pista al pasar el mouse) --- */
+        .tooltip-container {
+            position: relative; display: inline-block; cursor: help;
+            border-bottom: 2px dotted #999; padding: 0 2px; margin: 0 1px;
+        }
+        .tooltip-text {
+            visibility: hidden; background-color: #3b82f6; color: #fff;
+            text-align: center; border-radius: 6px; padding: 8px 10px;
+            position: absolute; z-index: 10; bottom: 125%; left: 50%;
+            transform: translateX(-50%); opacity: 0; transition: opacity 0.3s, visibility 0.3s;
+            width: max-content; max-width: 250px; font-size: 0.85rem; font-weight: 400;
+            line-height: 1.3; white-space: pre-wrap; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        .tooltip-text::after {
+            content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+            border-width: 5px; border-style: solid; border-color: #3b82f6 transparent transparent transparent;
+        }
+        .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="main-container" class="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
+        
+        <!-- === 1. LANDING PAGE (Menú Inicial) === -->
+        <div id="landing-page" class="p-8 text-center min-h-[500px] flex flex-col justify-center items-center">
+            <h1 class="title-text text-5xl md:text-6xl mb-4">
+                PT 日本語<br>
+                <span class="text-3xl block mt-2 text-gray-700">Practice</span>
+            </h1>
+            <p class="text-xl text-gray-600 mb-10 animate-pulse">
+                Conversación Japonesa para Fisioterapia
+            </p>
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Elige tu Nombre</h2>
+
+            <!-- Opciones de Kanji -->
+            <div class="flex justify-center space-x-4 mb-6">
+                <button 
+                    onclick="selectKanjiName('山口', 'Yamaguchi', this)" 
+                    class="kanji-option bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold py-3 px-4 rounded-xl border-2 border-gray-300 transition duration-150 text-xl flex flex-col items-center">
+                    山口<span class="text-sm font-normal text-gray-500">Yamaguchi</span>
+                </button>
+                <button 
+                    onclick="selectKanjiName('花', 'Hana', this)" 
+                    class="kanji-option bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold py-3 px-4 rounded-xl border-2 border-gray-300 transition duration-150 text-xl flex flex-col items-center">
+                    花<span class="text-sm font-normal text-gray-500">Hana</span>
+                </button>
+                <button 
+                    onclick="selectKanjiName('菅原', 'Sugawara', this)" 
+                    class="kanji-option bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold py-3 px-4 rounded-xl border-2 border-gray-300 transition duration-150 text-xl flex flex-col items-center">
+                    菅原<span class="text-sm font-normal text-gray-500">Sugawara</span>
+                </button>
+            </div>
+            
+            <p class="text-lg text-gray-500 mb-3">o ingresa el tuyo en Katakana:</p>
+            
+            <!-- Entrada de Katakana -->
+            <input 
+                type="text" 
+                id="name-input" 
+                placeholder="Ej: アイミート (Aimito)" 
+                class="text-input text-center text-gray-800 mb-6" 
+                oninput="validateNameInput(this.value)"
+            >
+
+            <button id="start-button" onclick="startGame()" disabled class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl transition duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed start-animation">
+                開始 (HAJIME) - Empezar
+            </button>
+            
+            <p id="name-feedback" class="text-sm mt-3 text-red-500 font-medium hidden">
+                *Por favor, ingresa un nombre o selecciona un Kanji.
+            </p>
+        </div>
+
+
+        <!-- === 2. APLICACIÓN DE EJERCICIOS (Inicialmente oculta) === -->
+        <div id="app-content" class="hidden">
+            <!-- Encabezado y Progreso -->
+            <div class="p-6 border-b border-gray-100">
+                <div class="flex items-center space-x-4">
+                    <span id="user-display-name" class="text-xl font-extrabold text-blue-700"></span>
+                    <div class="flex-grow bg-gray-200 rounded-full h-2.5">
+                        <div id="progress-bar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenido de la Pregunta (Aquí se insertará la tarjeta del ejercicio) -->
+            <div id="question-container" class="p-6 min-h-[300px] flex flex-col justify-between">
+                <p class="text-center text-gray-500">Cargando ejercicios...</p>
+            </div>
+
+            <!-- Feedback Bar (Barra de retroalimentación en la parte inferior) -->
+            <div id="feedback-bar" class="w-full h-0 opacity-0 transition-all duration-300 ease-in-out">
+                <div class="p-4 rounded-b-xl flex justify-between items-center transition-all duration-300">
+                    <p id="feedback-message" class="text-lg font-semibold"></p>
+                    <button id="next-button" onclick="handleNextQuestion()" disabled class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                        Continuar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pantalla de Resultados -->
+            <div id="results-screen" class="hidden p-8 text-center">
+                <h2 class="text-3xl font-extrabold text-green-600 mb-4">¡Lección Completada! 🎉</h2>
+                <p class="text-xl text-gray-700 mb-6">Tu puntuación final es:</p>
+                <p id="final-score" class="text-6xl font-black text-blue-600 mb-8"></p>
+                <button onclick="resetApp()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-xl transition duration-200 shadow-lg">
+                    Repetir Ejercicio
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. DATOS DE LOS EJERCICIOS ---
+        
+        let userName = "";
+
+        const exercises = [
+            {
+                type: "fill_the_blank",
+                scenario: "Escena 1: En la clínica (Presentación)",
+                question_es: "Mi nombre es [USUARIO]. Soy ___.", 
+                question_tokens: [
+                    { j: "私", t: "わたし (Watashi) | Yo" }, 
+                    "は", 
+                    "[USER_NAME]です。", 
+                    { j: "___", t: null }, // Blank slot marker
+                    "です。"
+                ],
+                blank_word: "理学療法士 (Rigaku Ryōhōshi)", // Fisioterapeuta
+                options: ["理学療法士 (Rigaku Ryōhōshi)", "医者 (Isha)", "看護師 (Kangoshi)", "学生 (Gakusei)"]
+            },
+            {
+                type: "short_answer",
+                scenario: "Escena 2: En la calle (Preguntando por ubicación)",
+                question_es: "Disculpe, ¿dónde está el banco?",
+                question_tokens: [
+                    "すみません、", 
+                    { j: "銀行", t: "ぎんこう (Ginkō) | Banco" }, 
+                    "は", 
+                    "どこですか？"
+                ],
+                blank_word: "どこ (Doko)", 
+                prompt_es: "Escribe la palabra 'dónde' en Romaji para completar la frase anterior (ej: doko)."
+            },
+            {
+                type: "fill_the_blank",
+                scenario: "Escena 3: Evaluación del paciente (Dolor)",
+                question_es: "¿Le ___?",
+                question_tokens: [
+                    { j: "痛い", t: "いたい (Itai) | doler (adjetivo)" }, 
+                    { j: "___", t: null }, // Blank slot marker
+                    "？"
+                ],
+                blank_word: "ですか (desu ka)", // es/formal question
+                options: ["ますか (masu ka)", "でした (deshita)", "ですか (desu ka)", "と (to)"]
+            },
+            {
+                type: "short_answer",
+                scenario: "Escena 4: Instrucciones (Movimiento)",
+                question_es: "Por favor, muévase lentamente.",
+                question_tokens: [
+                    "ゆっくり", 
+                    { j: "動い", t: "うごく (Ugoku) | Mover (forma de diccionario)" }, 
+                    "てください。"
+                ],
+                blank_word: "ゆっくり (Yukkuri)", 
+                prompt_es: "Escribe 'lentamente' en Romaji."
+            },
+            {
+                type: "fill_the_blank",
+                scenario: "Escena 5: Cortesía (Agradecimiento)",
+                question_es: "Entendido, ___.",
+                question_tokens: [
+                    { j: "わかり", t: "わかる (Wakaru) | Entender (forma de diccionario)" }, 
+                    "ました。", 
+                    { j: "___", t: null }, // Blank slot marker
+                    "。"
+                ],
+                blank_word: "ありがとうございます (Arigatou gozaimasu)", // Muchas gracias
+                options: ["ごめんなさい (Gomennasai)", "さようなら (Sayounara)", "どういたしまして (Dōitashimashite)", "ありがとうございます (Arigatou gozaimasu)"]
+            },
+             {
+                type: "short_answer",
+                scenario: "Escena 6: Partes del cuerpo (Evaluación)",
+                question_es: "Me duele la rodilla.",
+                question_tokens: [
+                    { j: "膝", t: "ひざ (Hiza) | Rodilla" }, 
+                    "が", 
+                    { j: "痛い", t: "いたい (Itai) | doler (adjetivo)" },
+                    "です。"
+                ],
+                blank_word: "膝 (Hiza)", 
+                prompt_es: "Escribe la palabra 'rodilla' en Romaji."
+            }
+        ];
+
+        // --- 2. GESTIÓN DEL ESTADO GLOBAL Y ELEMENTOS ---
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let isAnswered = false;
+        
+        const mainContainer = document.getElementById('main-container');
+        const landingPage = document.getElementById('landing-page');
+        const appContent = document.getElementById('app-content');
+        const questionContainer = document.getElementById('question-container');
+        const feedbackBar = document.getElementById('feedback-bar');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const nextButton = document.getElementById('next-button');
+        const progressBar = document.getElementById('progress-bar');
+        const resultsScreen = document.getElementById('results-screen');
+        const nameInput = document.getElementById('name-input');
+        const startButton = document.getElementById('start-button');
+        const userDisplayName = document.getElementById('user-display-name');
+
+
+        // --- 3. FUNCIONES DE UTILITY Y ANIMACIÓN ---
+        
+        // Función de utilidad para mezclar un array (Fisher-Yates)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                // FIX: El SyntaxError se corregía asegurando la sintaxis correcta de desestructuración.
+                // Corrección: [array[i], array[j]] = [array[j], array[i]];
+                [array[i], array[j]] = [array[j], array[i]]; 
+            }
+        }
+        
+        /**
+         * Implementa el efecto de máquina de escribir letra por letra.
+         * @param {string} text - El texto completo a escribir.
+         * @param {HTMLElement} element - El elemento DOM donde se insertará el texto.
+         * @param {function} [callback] - Función a ejecutar al finalizar.
+         */
+        function typeEffect(text, element, callback = null) {
+            let i = 0;
+            element.textContent = ''; // Limpiar contenido
+            
+            // Reemplazar los tooltips (que son HTML) con marcadores para escribirlos como texto plano,
+            // luego re-insertarlos como HTML al terminar.
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = text;
+            
+            // Extraer el texto plano, manteniendo los tags de tooltip inalterados.
+            const fullTextContent = tempDiv.innerHTML;
+            
+            // Para simular el efecto de typewriter en HTML complejo, lo haremos carácter por carácter
+            // hasta que el HTML esté completo.
+            
+            // Función para escribir el siguiente carácter/token
+            function typing() {
+                if (i < fullTextContent.length) {
+                    
+                    // Comprobar si estamos al inicio de un tag HTML para escribirlo completo de una vez
+                    if (fullTextContent[i] === '<') {
+                        const endIndex = fullTextContent.indexOf('>', i);
+                        if (endIndex !== -1) {
+                            element.innerHTML += fullTextContent.substring(i, endIndex + 1);
+                            i = endIndex + 1;
+                        } else {
+                            element.innerHTML += fullTextContent[i++];
+                        }
+                    } else {
+                        element.innerHTML += fullTextContent[i++];
+                    }
+                    
+                    // Ajustar la velocidad si el texto es muy largo
+                    const delay = (i % 5 === 0) ? 70 : 50; 
+                    setTimeout(typing, delay);
+                } else {
+                    // Quitar el cursor de máquina de escribir al terminar
+                    element.classList.remove('typewriter-container');
+                    
+                    if (callback) {
+                        callback();
+                    }
+                }
+            }
+            
+            // Añadir el cursor y empezar
+            element.classList.add('typewriter-container');
+            typing();
+        }
+
+
+        /**
+         * Función para generar el HTML de la frase japonesa con tooltips interactivos.
+         * @param {Array} tokens - Array de tokens de la pregunta.
+         * @param {string} [blankPlaceholder=null] - El HTML a usar para el marcador '___'.
+         * @returns {string} HTML generado.
+         */
+        function renderTokens(tokens, blankPlaceholder = null) {
+            let html = '';
+            
+            tokens.forEach(token => {
+                if (typeof token === 'string') {
+                    // Reemplazar marcador de nombre con el nombre real
+                    if (token === '[USER_NAME]です。') {
+                        html += userName + 'です。';
+                    } else {
+                        html += token;
+                    }
+                } else if (token.j === '___') {
+                    html += blankPlaceholder || '<span id="blank-slot" class="text-blue-500 font-black border-b-4 border-blue-500 px-3 pb-1">?</span>';
+                } else {
+                    const tooltipContent = token.t.replace(/\|/g, '<br>'); 
+                    html += `
+                        <span class="tooltip-container">
+                            ${token.j}
+                            <span class="tooltip-text">${tooltipContent}</span>
+                        </span>
+                    `;
+                }
+            });
+            return html;
+        }
+
+        // Función para limpiar y obtener solo el Romaji de la respuesta
+        function getRomajiAnswer(fullAnswer) {
+            const match = fullAnswer.match(/\((.*?)\)/);
+            let romaji = match ? match[1] : fullAnswer;
+            
+            // Limpiar y normalizar para comparación flexible
+            romaji = romaji.toLowerCase()
+                           .replace(/[ōôöòó]/g, 'o')
+                           .replace(/[ūûüùú]/g, 'u')
+                           .replace(/[ēêëèé]/g, 'e')
+                           .replace(/[īîïìí]/g, 'i')
+                           .replace(/[āâäàá]/g, 'a')
+                           .replace(/[\s\W]/g, ''); 
+            return romaji;
+        }
+
+        // --- 4. GESTIÓN DEL NOMBRE DE USUARIO ---
+
+        // Valida que el campo de entrada no esté vacío.
+        function validateNameInput(value) {
+            const cleanValue = value.trim();
+            // Deseleccionar Kanij si el usuario empieza a escribir
+            document.querySelectorAll('.kanji-option').forEach(btn => {
+                btn.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+            });
+
+            if (cleanValue.length > 0) {
+                userName = cleanValue;
+                startButton.disabled = false;
+                document.getElementById('name-feedback').classList.add('hidden');
+            } else {
+                // Solo deshabilitar si no se ha seleccionado un Kanji
+                const kanjiSelected = document.querySelector('.kanji-option.bg-blue-500');
+                if (!kanjiSelected) {
+                    startButton.disabled = true;
+                }
+                userName = "";
+            }
+        }
+        
+        // Manejador para seleccionar un nombre en Kanji
+        function selectKanjiName(kanji, romaji, clickedButton) {
+            userName = kanji;
+            nameInput.value = ""; // Limpiar el input si se selecciona Kanji
+            startButton.disabled = false;
+            document.getElementById('name-feedback').classList.add('hidden');
+            
+            // Resaltar el seleccionado
+            document.querySelectorAll('.kanji-option').forEach(btn => {
+                btn.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+            });
+            // Usamos 'clickedButton' que es el elemento 'this' pasado desde el onclick
+            clickedButton.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+        }
+
+        // Inicia el juego y transiciona las pantallas
+        function startGame() {
+            if (!userName) {
+                document.getElementById('name-feedback').classList.remove('hidden');
+                return;
+            }
+            
+            // Transición de Landing a App
+            landingPage.classList.add('hidden');
+            appContent.classList.remove('hidden');
+            
+            // Mostrar nombre del usuario en la barra de progreso
+            userDisplayName.textContent = userName;
+
+            // Iniciar el ciclo de preguntas
+            shuffleArray(exercises); 
+            renderQuestion();
+        }
+        
+        // --- 5. LÓGICA DEL JUEGO CON ANIMACIÓN DE ESCRITURA ---
+
+        // Renderiza el ejercicio dependiendo de su tipo
+        function renderQuestion() {
+            resultsScreen.classList.add('hidden');
+            appContent.classList.remove('hidden');
+
+            const currentExercise = exercises[currentQuestionIndex];
+            if (!currentExercise) return;
+
+            // Limpiar y preparar la estructura de la pregunta
+            questionContainer.innerHTML = `
+                <div class="slide-in">
+                    <p class="text-sm text-blue-500 font-medium mb-1">${currentExercise.scenario} (${currentExercise.type === 'fill_the_blank' ? 'Rellenar' : 'Redacción Corta'})</p>
+                    
+                    <p class="text-xl font-semibold text-gray-600 mb-2">Traducción:</p>
+                    <p id="translation-text" class="text-2xl font-bold text-gray-800 mb-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                        ${currentExercise.question_es.replace('[USUARIO]', userName)}
+                    </p>
+
+                    <!-- Contenedor para la animación de máquina de escribir -->
+                    <div id="japanese-phrase-container" class="text-3xl font-black text-gray-900 bg-gray-100 p-4 rounded-lg mb-6">
+                        <span id="japanese-phrase"></span>
+                    </div>
+
+                    <!-- Contenedor dinámico para opciones/input -->
+                    <div id="dynamic-interaction-container">
+                        <!-- Esto se llenará después de la animación de escritura -->
+                        <p class="text-center text-gray-400">...</p>
+                    </div>
+                </div>
+            `;
+            
+            // Generar el HTML de la frase (incluyendo tooltips y el marcador de blank si existe)
+            const blankPlaceholder = currentExercise.type === 'fill_the_blank' 
+                ? '<span id="blank-slot" class="text-blue-500 font-black border-b-4 border-blue-500 px-3 pb-1">?</span>'
+                : '';
+            
+            const fullQuestionJpHTML = renderTokens(currentExercise.question_tokens, blankPlaceholder);
+            const japanesePhraseElement = document.getElementById('japanese-phrase');
+            const dynamicInteractionContainer = document.getElementById('dynamic-interaction-container');
+
+            // Ejecutar la animación de máquina de escribir
+            typeEffect(fullQuestionJpHTML, japanesePhraseElement, () => {
+                // Callback: Una vez que la frase se ha escrito completamente, renderizar las opciones
+                if (currentExercise.type === 'fill_the_blank') {
+                    renderFillTheBlankOptions(currentExercise, dynamicInteractionContainer);
+                } else if (currentExercise.type === 'short_answer') {
+                    renderShortAnswerInput(currentExercise, dynamicInteractionContainer);
+                }
+            });
+
+
+            // Ocultar feedback y botón "Continuar"
+            feedbackBar.style.height = '0';
+            feedbackBar.style.opacity = '0';
+            feedbackBar.classList.remove('correct-answer', 'incorrect-answer');
+            feedbackMessage.textContent = '';
+            nextButton.disabled = true;
+
+            isAnswered = false;
+
+            // Limpiar flash de respuesta del contenedor principal
+            mainContainer.classList.remove('bg-correct-flash', 'bg-incorrect-flash');
+
+            updateProgress();
+        }
+        
+        // Rellena el contenedor con las opciones de selección
+        function renderFillTheBlankOptions(currentExercise, container) {
+            const shuffledOptions = [...currentExercise.options];
+            shuffleArray(shuffledOptions);
+
+            const optionsHtml = shuffledOptions.map((option, index) => `
+                <button
+                    class="option-button w-full text-left p-4 my-2 border-2 border-gray-300 rounded-xl bg-white text-gray-800 text-lg hover:border-blue-400 focus:outline-none"
+                    data-value="${option}"
+                    onclick="handleOptionSelect(this)"
+                    id="option-${index}"
+                >
+                    ${option}
+                </button>
+            `).join('');
+
+            container.innerHTML = `
+                <div id="options-container" class="space-y-3">
+                    ${optionsHtml}
+                </div>
+            `;
+        }
+
+        // Rellena el contenedor con el input de respuesta corta
+        function renderShortAnswerInput(currentExercise, container) {
+            const promptEs = currentExercise.prompt_es || "Escribe la respuesta en Romaji (ej: arigatou).";
+
+            container.innerHTML = `
+                <div id="input-container" class="space-y-4">
+                    <p class="text-lg text-gray-700 font-medium">${promptEs}</p>
+                    <input 
+                        type="text" 
+                        id="romaji-input" 
+                        placeholder="Escribe aquí en Romaji..." 
+                        class="text-input uppercase" 
+                        oninput="checkInputStatus(this)"
+                    >
+                    <button id="submit-button" onclick="handleSubmitAnswer()" disabled class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                        Comprobar
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('romaji-input').focus();
+        }
+        
+        // Función placeholder para el oninput del Short Answer (requiere un argumento para ser pasada al HTML)
+        function checkInputStatus(inputElement) {
+            const submitButton = document.getElementById('submit-button');
+            if (submitButton) {
+                submitButton.disabled = inputElement.value.trim().length === 0;
+            }
+        }
+
+        // Actualiza la barra de progreso
+        function updateProgress() {
+            const percentage = ((currentQuestionIndex) / exercises.length) * 100;
+            progressBar.style.width = `${percentage}%`;
+        }
+
+        // --- 6. MANEJO DE EVENTOS ---
+        
+        function processAnswer(selectedValue, isShortAnswer = false) {
+            if (isAnswered) return;
+
+            const currentExercise = exercises[currentQuestionIndex];
+            
+            const selectedClean = getRomajiAnswer(selectedValue);
+            const correctClean = getRomajiAnswer(currentExercise.blank_word);
+            
+            const isCorrect = selectedClean === correctClean;
+            
+            let messageText = '';
+
+            // 1. Aplicar flash de respuesta al contenedor principal
+            if (isCorrect) {
+                mainContainer.classList.add('bg-correct-flash');
+                mainContainer.classList.remove('bg-incorrect-flash');
+            } else {
+                mainContainer.classList.add('bg-incorrect-flash');
+                mainContainer.classList.remove('bg-correct-flash');
+            }
+            
+            // Retirar la clase de flash después de 400ms
+            setTimeout(() => {
+                mainContainer.classList.remove('bg-correct-flash', 'bg-incorrect-flash');
+            }, 400);
+
+
+            // 2. Manejar la UI de la respuesta
+            if (currentExercise.type === 'fill_the_blank') {
+                const blankSlot = document.getElementById('blank-slot');
+                // Al rellenar, usamos la parte japonesa si está presente, o el texto completo.
+                const displayValue = selectedValue.split(' ')[0]; 
+                
+                blankSlot.textContent = displayValue;
+                blankSlot.classList.remove('text-blue-500', 'border-blue-500');
+
+                let selectedButton = null;
+                document.querySelectorAll('.option-button').forEach(btn => {
+                    if (btn.getAttribute('data-value').trim() === selectedValue.trim()) {
+                        selectedButton = btn;
+                    }
+                    btn.disabled = true;
+                });
+                
+                if (selectedButton) {
+                    selectedButton.classList.add('hit-effect');
+                    setTimeout(() => { selectedButton.classList.remove('hit-effect'); }, 150);
+                }
+                
+                if (isCorrect) {
+                    messageText = `<span class="correct-text">¡Correcto!</span>: ${currentExercise.blank_word}`;
+                    blankSlot.classList.add('correct-text', 'border-green-500');
+                    if (selectedButton) selectedButton.classList.add('border-green-500', 'bg-green-100');
+                } else {
+                    messageText = `<span class="incorrect-text">¡Incorrecto!</span>. La respuesta correcta es: <span class="correct-text">${currentExercise.blank_word}</span>`;
+                    blankSlot.classList.add('incorrect-text', 'border-red-500');
+                    if (selectedButton) selectedButton.classList.add('border-red-500', 'bg-red-100');
+                    document.querySelectorAll('.option-button').forEach(btn => {
+                        if (getRomajiAnswer(btn.getAttribute('data-value')) === correctClean) {
+                            btn.classList.add('border-green-500', 'bg-green-200');
+                        }
+                    });
+                }
+
+            } else if (currentExercise.type === 'short_answer') {
+                document.getElementById('romaji-input').disabled = true;
+                document.getElementById('submit-button').disabled = true;
+                
+                // Mostrar la respuesta dada por el usuario (normalizada)
+                const userRomaji = selectedValue.toLowerCase().replace(/[\s\W]/g, '');
+                
+                if (isCorrect) {
+                    messageText = `<span class="correct-text">¡Correcto!</span>. La respuesta esperada era: <span class="text-blue-600">${correctClean}</span> (${currentExercise.blank_word})`;
+                } else {
+                    messageText = `<span class="incorrect-text">¡Incorrecto!</span>. Escribiste: <span class="incorrect-text">${userRomaji}</span>. La respuesta correcta es: <span class="text-blue-600">${correctClean}</span> (${currentExercise.blank_word})`;
+                }
+            }
+
+
+            // 3. Mostrar retroalimentación general
+            if (isCorrect) {
+                score++; 
+                feedbackBar.classList.add('correct-answer');
+                feedbackBar.classList.remove('incorrect-answer');
+            } else {
+                feedbackBar.classList.add('incorrect-answer');
+                feedbackBar.classList.remove('correct-answer');
+            }
+                
+            feedbackMessage.innerHTML = messageText;
+
+            // 4. Mostrar barra de feedback con botón Continuar
+            feedbackBar.style.height = 'auto';
+            feedbackBar.style.opacity = '1';
+            nextButton.disabled = false;
+
+            isAnswered = true;
+        }
+
+        // Lógica al seleccionar una opción de respuesta (Botón)
+        function handleOptionSelect(button) {
+            if (isAnswered) return;
+            const selectedValue = button.getAttribute('data-value');
+            processAnswer(selectedValue, false);
+        }
+        
+        // Lógica al enviar la respuesta corta (Input)
+        function handleSubmitAnswer() {
+            if (isAnswered) return;
+            
+            const input = document.getElementById('romaji-input');
+            const selectedValue = input.value.trim();
+            
+            const submitButton = document.getElementById('submit-button');
+            submitButton.classList.add('hit-effect');
+            setTimeout(() => { submitButton.classList.remove('hit-effect'); }, 150);
+            
+            processAnswer(selectedValue, true);
+        }
+
+
+        // Lógica al pasar a la siguiente pregunta o terminar
+        function handleNextQuestion() {
+            nextButton.classList.add('hit-effect');
+            setTimeout(() => {
+                nextButton.classList.remove('hit-effect');
+                
+                currentQuestionIndex++;
+                if (currentQuestionIndex < exercises.length) {
+                    renderQuestion();
+                } else {
+                    showResults();
+                }
+
+            }, 100);
+        }
+
+        // Muestra la pantalla de resultados finales
+        function showResults() {
+            questionContainer.classList.add('hidden');
+            feedbackBar.style.height = '0';
+            feedbackBar.style.opacity = '0';
+            resultsScreen.classList.remove('hidden');
+
+            const finalScoreElement = document.getElementById('final-score');
+            finalScoreElement.textContent = `${score}/${exercises.length}`;
+
+            progressBar.style.width = '100%';
+        }
+
+        // Reinicia la aplicación al estado inicial
+        function resetApp() {
+            const resetButton = document.querySelector('#results-screen button');
+            resetButton.classList.add('hit-effect');
+            setTimeout(() => {
+                resetButton.classList.remove('hit-effect');
+                
+                // Vuelve a la pantalla de inicio
+                resultsScreen.classList.add('hidden');
+                appContent.classList.add('hidden');
+                landingPage.classList.remove('hidden');
+
+                // Limpiar estado
+                currentQuestionIndex = 0;
+                score = 0;
+                userName = "";
+                nameInput.value = "";
+                startButton.disabled = true;
+                document.querySelectorAll('.kanji-option').forEach(btn => {
+                    btn.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+                });
+
+            }, 100);
+        }
+
+
+        // --- 7. INICIALIZACIÓN ---
+
+        window.selectKanjiName = selectKanjiName; // Exportar función para el onclick en HTML
+        window.validateNameInput = validateNameInput; // Exportar función para el oninput en HTML
+        window.startGame = startGame; // Exportar función para el onclick en HTML
+        window.handleNextQuestion = handleNextQuestion; // Exportar función para el onclick en HTML
+        window.handleOptionSelect = handleOptionSelect; // Exportar función para el onclick en HTML
+        window.handleSubmitAnswer = handleSubmitAnswer; // Exportar función para el onclick en HTML
+        window.resetApp = resetApp; // Exportar función para el onclick en HTML
+        window.checkInputStatus = checkInputStatus; // Exportar función para el oninput en HTML
+
+        window.onload = function() {
+            // No iniciar renderQuestion aquí. Esperar a startGame().
+        };
+
+    </script>
+</body>
+</html>
