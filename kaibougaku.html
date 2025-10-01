@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anatomía 3D - Nihongo</title>
+    <!-- Tailwind CSS para diseño responsivo y moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Open Sans Font para estilo profesional -->
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Habilita la estrategia 'class' para Dark Mode
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Open Sans', 'Inter', 'sans-serif'], // Usamos Open Sans como principal
+                    },
+                    colors: {
+                        // Paleta de la academia (basada en el estilo azul/cian/gris del snippet)
+                        'primary-blue': '#2563eb', // blue-600
+                        'accent-cyan': '#06b6d4', // cyan-500
+                        'text-dark': '#1e293b',
+                        'text-light': '#f8fafc',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Three.js Library para modelado 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        /* Estilos base para el contenedor 3D */
+        .anatomy-container {
+            height: 100%; 
+            min-height: 60vh; 
+            background-color: #f0f4f8; 
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); 
+            overflow: hidden;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Estilos en Dark Mode para el contenedor 3D */
+        .dark .anatomy-container {
+            background-color: #1f2937; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Asegura que el canvas ocupe todo el contenedor */
+        #anatomyCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- Estilos para la Animación de Traducción (Anime Reveal con Pop) --- */
+        .btn-text-wrapper {
+            position: relative;
+            min-height: 1.5rem; 
+            line-height: 1.5rem; 
+            display: block;
+            perspective: 1000px;
+        }
+        .original-text, .translation-text {
+            display: block;
+            white-space: nowrap;
+            transition: opacity 0.1s; 
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        .translation-text {
+            position: absolute; 
+            top: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            opacity: 0; 
+            pointer-events: none; 
+            font-size: 0.95rem; 
+            transform: scale(0.8); 
+        }
+
+        /* Estado en hover/flash: Oculta el japonés y muestra el español */
+        .show-translation .original-text {
+            opacity: 0; 
+        }
+        .show-translation .translation-text {
+            opacity: 1; 
+            /* Animación de 0.3s con curva elástica para un efecto de "pop" */
+            animation: anime-reveal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1 forwards; 
+            color: #ffffff; 
+        }
+
+        /* Animación: Revelación estilo Anime/Manga */
+        @keyframes anime-reveal {
+            0% { transform: scale(0.8) translateY(-10px); opacity: 0; color: #fff; } 
+            50% { transform: scale(1.1) translateY(0); opacity: 1; color: #f97316; } /* Naranja vibrante para el flash */
+            100% { transform: scale(1) translateY(0); opacity: 1; color: #fff; } 
+        }
+        /* -------------------------------------------------------- */
+
+
+        /* --- Animación Estilo Manga y NEÓN para botones de control --- */
+        .manga-action {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.1); 
+            transition: all 0.2s ease-out; 
+            cursor: pointer;
+            border: 3px solid transparent; 
+            position: relative;
+            z-index: 10;
+        }
+
+        .manga-action:not(:active) {
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+            transform: translateY(0);
+        }
+
+        .manga-action:hover {
+            transform: translateY(-2px) scale(1.02); 
+            filter: brightness(1.1); 
+            box-shadow: 
+                0 4px 0 rgba(0, 0, 0, 0.15), 
+                0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .bg-cyan-500.manga-action:hover { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15), 0 0 15px #06b6d4, 0 0 30px rgba(6, 182, 212, 0.5); }
+        .bg-teal-500.manga-action:hover { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15), 0 0 15px #14b8a6, 0 0 30px rgba(20, 184, 166, 0.5); }
+        .bg-green-500.manga-action:hover { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15), 0 0 15px #10b981, 0 0 30px rgba(16, 185, 129, 0.5); }
+        .bg-yellow-500.manga-action:hover { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15), 0 0 15px #f59e0b, 0 0 30px rgba(245, 158, 11, 0.5); }
+        .bg-blue-600.manga-action:hover, .bg-blue-500.manga-action:hover, .bg-primary-blue.manga-action:hover { 
+            box-shadow: 
+                0 4px 0 rgba(0, 0, 0, 0.15),
+                0 0 15px #2563eb, /* AZUL NEÓN (usando 600) */
+                0 0 30px rgba(37, 99, 235, 0.5);
+        }
+        .bg-red-500.manga-action:hover { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15), 0 0 15px #ef4444, 0 0 30px rgba(239, 68, 68, 0.5); }
+        .bg-purple-500.manga-action:hover { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15), 0 0 15px #9333ea, 0 0 30px rgba(147, 51, 234, 0.5); }
+        .bg-orange-500.manga-action:hover { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15), 0 0 15px #f97316, 0 0 30px rgba(249, 115, 22, 0.5); }
+        
+        .bg-gray-200.manga-action:hover, 
+        .dark .bg-gray-700.manga-action:hover { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15), 0 0 15px rgba(255, 255, 255, 0.8); }
+
+        .manga-action:active {
+            transform: translateY(2px) scale(0.98); 
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15); 
+            animation: manga-flash 0.15s ease-out;
+            border-color: #ffffff; 
+            filter: brightness(0.8); 
+        }
+        
+        .bg-blue-600.manga-action:active, .bg-primary-blue.manga-action:active { border-color: #fca5a5; } 
+        .bg-green-500.manga-action:active { border-color: #fde68a; } 
+        .bg-cyan-500.manga-action:active { border-color: #fca5a5; } 
+        
+        .bg-gray-200.manga-action:active, 
+        .dark .bg-gray-700.manga-action:active { border-color: #3b82f6; }
+
+        @keyframes manga-flash {
+            0% { transform: scale(1.02); opacity: 1; }
+            50% { transform: scale(0.95); opacity: 0.9; }
+            100% { transform: scale(0.98); opacity: 1; }
+        }
+
+        /* Estilos de botones generales */
+        .control-btn {
+            @apply p-3 rounded-lg font-semibold text-sm transition-all duration-200 shadow-md text-white;
+        }
+
+        /* Estilo para las pestañas de navegación */
+        .tab-button {
+            @apply p-3 px-4 rounded-t-lg font-bold text-base transition-colors duration-300 flex-grow text-center;
+            box-shadow: none;
+        }
+
+        /* Ajustes de responsividad */
+        @media (max-width: 640px) {
+            .sm\:grid-cols-4 { grid-template-columns: 1fr 1fr; }
+            .sm\:col-span-2 { grid-column: span 2 / span 2; }
+        }
+        
+        /* Dark Mode overrides */
+        .dark .bg-gray-100 { background-color: #111827; }
+        .dark .text-gray-800 { color: #d1d5db; }
+        .dark .bg-white { background-color: #1f2937; }
+        .dark .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3); }
+        .dark #theme-toggle { background-color: #1f2937; border: 1px solid #374151; }
+        
+        /* --- ESTILOS ESPECÍFICOS DEL FOOTER --- */
+
+        /* 1. Animación de Máquina de Escribir */
+        #typewriter-text {
+            /* Asegura que el texto no salte horizontalmente */
+            display: inline-block; 
+            min-width: 80%; /* Asegura espacio suficiente */
+            font-family: monospace; /* Fuente de maquina de escribir */
+            overflow: hidden; /* Oculta el texto que se está escribiendo */
+            border-right: 0.15em solid #06b6d4; /* Cursor pulsante (Accent Cyan) */
+            white-space: nowrap; /* Evita que el texto se rompa */
+            margin: 0 auto; 
+            letter-spacing: 0.15em; 
+            animation: 
+                blink-caret 0.75s step-end infinite; /* Animación del cursor */
+            font-size: 1.25rem; /* texto más grande */
+            font-weight: 700;
+            color: #2563eb; /* Azul primario */
+        }
+        .dark #typewriter-text {
+            color: #06b6d4; /* Cyan en Dark Mode */
+            border-color: #2563eb; /* Azul primario para el cursor */
+        }
+
+        /* Animación del cursor */
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #06b6d4; }
+        }
+        .dark @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #2563eb; }
+        }
+
+        /* 2. Botón de Instagram NEÓN */
+        .instagram-btn {
+            /* MANTENEMOS el estilo de neón, solo quitamos el blur trigger */
+            @apply flex items-center justify-center space-x-2 py-3 px-6 bg-pink-600 text-white font-bold rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] border-b-4 border-pink-700 relative z-30;
+            box-shadow: 0 4px 0 #db2777; 
+        }
+
+        .instagram-btn:hover {
+            box-shadow: 
+                0 4px 0 #db2777,
+                0 0 20px rgba(236, 72, 153, 0.9), 
+                0 0 40px rgba(168, 85, 247, 0.7); 
+            border-color: #db2777;
+        }
+
+        .instagram-btn:active {
+            border-bottom-width: 0px;
+            transform: translateY(4px) scale(0.98);
+            box-shadow: none;
+        }
+        
+        /* Icono de Instagram (SVG de Lucide) */
+        .instagram-svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* 3. Overlay y Filtro de Blur */
+        .blur-container {
+            /* Contenedor principal para el filtro de desenfoque */
+            position: relative;
+            z-index: 1; 
+            transition: filter 0.4s ease-in-out;
+        }
+        
+        /* Clase añadida al body para activar el blur y el modal */
+        .blur-active .blur-container {
+            filter: blur(8px) brightness(0.7); /* Desenfoca y oscurece */
+            pointer-events: none; /* Deshabilita la interacción con el contenido de fondo */
+        }
+
+        /* 4. Modal de Explicación del Kanji (Superpuesto) */
+        #kanji-modal {
+            @apply fixed inset-0 flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-300 z-50;
+        }
+        .blur-active #kanji-modal {
+            opacity: 1;
+            pointer-events: auto; /* Habilita la interacción con el modal */
+        }
+
+        /* Estilo CLÁSICO de la caja de diálogo (Blanco con borde azul, texto oscuro) */
+        .kanji-box {
+            @apply bg-white p-6 rounded-xl shadow-2xl max-w-sm mx-4 transform transition-all duration-500 scale-90;
+            border: 4px solid #2563eb; /* Borde Azul Primario */
+            color: #1f2937; /* Texto Gris Oscuro */
+        }
+
+        .kanji-box h3 {
+             @apply text-primary-blue; /* Títulos Azules */
+        }
+        
+        /* Aseguramos que el texto permanezca oscuro incluso en Dark Mode para el estilo "Clásico" */
+        .blur-active .kanji-box {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans p-4 sm:p-8 transition-colors duration-300">
+
+    <!-- MODAL DE EXPLICACIÓN DEL KANJI (Oculto por defecto) -->
+    <div id="kanji-modal">
+        <div class="kanji-box">
+            <h3 class="text-3xl font-extrabold text-center mb-3">
+                使い方 (Cómo Usar las Expresiones)
+            </h3>
+            <p class="text-center text-lg font-bold mb-4">
+                El lenguaje clave es tu herramienta de estudio.
+            </p>
+            
+            <ul class="list-disc list-inside space-y-2 text-sm">
+                <li>
+                    **Japonés (Kanji / Hiragana):** Es el término original y preciso. Memorízalo visualmente.
+                </li>
+                <li>
+                    **Traducción (Español):** Se revela al pasar el mouse (**Hover**) durante 1 segundo.
+                </li>
+                <li>
+                    **Explicación de Uso:** Si mantienes el cursor sobre cualquier botón por **más de 2.5 segundos**, esta ventana aparecerá.
+                </li>
+            </ul>
+
+            <button onclick="toggleBlur(false)" class="mt-5 w-full manga-action bg-primary-blue text-white hover:bg-blue-700">
+                ¡Entendido! (はい!)
+            </button>
+
+            <p class="text-center text-xs italic text-gray-500 mt-5">
+                La frase **"Muchas aventuras comienzan con un 'Sí' (はい)"** es una motivación a la acción y la aceptación de nuevos desafíos.
+            </p>
+        </div>
+    </div>
+    <!-- FIN DEL MODAL -->
+
+    <!-- CONTENEDOR PRINCIPAL CON BLUR (Todo el contenido de la página irá aquí) -->
+    <div id="app-content" class="blur-container max-w-7xl mx-auto relative">
+        
+        <!-- Botón de Dark Mode -->
+        <button id="theme-toggle" class="absolute top-0 right-0 p-3 bg-white dark:bg-gray-700 rounded-full shadow-lg transition-colors duration-300 hover:scale-105 z-20" onclick="toggleDarkMode()">
+            <!-- Icono de Sol (Light Mode) / Icono de Luna (Dark Mode) -->
+            <svg id="sun-icon" class="w-6 h-6 text-yellow-500 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            <svg id="moon-icon" class="w-6 h-6 text-gray-800 dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 118.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+        </button>
+        
+        <header class="text-center mb-8">
+            <!-- Título con el color principal de la academia -->
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-primary-blue dark:text-accent-cyan">
+                解剖学ビジュアルティーチャー (Anatomía 3D para Fisioterapia)
+            </h1>
+            <p class="mt-2 text-lg text-gray-600 dark:text-gray-400">
+                Navega entre los módulos para aprender vocabulario y relaciones anatómicas funcionales.
+            </p>
+        </header>
+
+        <!-- Pestañas de Navegación (Ahora usando primary-blue) -->
+        <div class="flex space-x-2 sm:space-x-4 mb-6 border-b border-blue-300 dark:border-blue-700">
+            <button onclick="setView('relational')" id="tab-relational" class="tab-button bg-primary-blue text-white shadow-lg dark:bg-blue-700 dark:text-white">
+                1. 関係用語 (Relaciones)
+            </button>
+            <button onclick="setView('tissues')" id="tab-tissues" class="tab-button text-gray-600 hover:bg-blue-100 dark:text-gray-300 dark:hover:bg-gray-800">
+                2. 組織 (Tejidos: 骨・筋・皮)
+            </button>
+            <button onclick="setView('movement')" id="tab-movement" class="tab-button text-gray-600 hover:bg-blue-100 dark:text-gray-300 dark:hover:bg-gray-800">
+                3. 運動 (Movimiento: 屈曲・伸展)
+            </button>
+        </div>
+
+        <!-- CONTENEDOR PRINCIPAL: Visor 3D (2/3) y Controles (1/3) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- 1. Visor 3D (Ocupa 2/3 en desktop) -->
+            <div class="lg:col-span-2">
+                <div class="anatomy-container h-full min-h-[60vh] mb-6 lg:mb-0"> 
+                    <canvas id="anatomyCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- 2. Panel de Controles (Ocupa 1/3 en desktop) -->
+            <div class="lg:col-span-1">
+                <div id="controls-panel" class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg transition-colors duration-300 h-full">
+                    <!-- El contenido de los controles se inyecta aquí con JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- FOOTER: Máquina de Escribir y Botón de Instagram -->
+        <footer class="mt-12 py-8 border-t-4 border-primary-blue/30 dark:border-blue-700/50 text-center">
+            <div class="max-w-xl mx-auto">
+                <!-- 1. Contenedor de la Animación de Máquina de Escribir -->
+                <div class="h-10 flex justify-center items-center mb-6">
+                    <span id="typewriter-text"></span>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+    
+    <!-- BOTÓN DE INSTAGRAM (ESTILO NEÓN MANTENIDO) -->
+    <div class="text-center mt-[-1rem] relative z-30">
+        <a 
+            href="https://www.instagram.com/zvacademy_vzla" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            class="instagram-btn"
+            
+            /* Lógica de Blur ELIMINADA de este botón */
+        >
+            <!-- SVG de Icono de Instagram (Lucide) -->
+            <svg class="instagram-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+            </svg>
+            <span>¡Síguenos en @zvacademy_vzla!</span>
+        </a>
+        <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+            Diseñado y desarrollado por ZVAcademy.
+        </p>
+    </div>
+
+
+    <script type="module">
+        // Variables globales de Three.js
+        let scene, camera, renderer, currentView = 'relational';
+        let relationalModel, tissueModel, movementModel;
+
+        // Estado para la animación de movimiento
+        const movementState = {
+            isFlexed: false,
+            targetRotation: 0,
+            armGroup: null,
+            forearm: null,
+            speed: 0.05, // Velocidad de la animación
+        };
+
+        // --- Lógica de Dark Mode ---
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            
+            // Si la escena está inicializada, actualiza el fondo del Three.js
+            if (scene) {
+                const newBackgroundColor = isDark ? 0x1f2937 : 0xf0f4f8; // Coincidir con los estilos CSS
+                scene.background = new THREE.Color(newBackgroundColor);
+            }
+            // Refrescar los estilos de los paneles de control para Dark Mode
+            setView(currentView); 
+        }
+
+        // Aplicar tema guardado al cargar
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+
+        // --- Lógica de Blur y Modal Kanji (Ahora solo activado por botones funcionales) ---
+
+        /**
+         * Activa o desactiva el filtro de desenfoque en la interfaz principal.
+         * @param {boolean} activate - Si es true, activa el blur y muestra el modal.
+         */
+        function toggleBlur(activate) {
+            const body = document.body;
+            // El estado 'blur-active' aplica el filtro al contenedor #app-content 
+            // y muestra el modal #kanji-modal
+            if (activate) {
+                body.classList.add('blur-active');
+            } else {
+                body.classList.remove('blur-active');
+            }
+        }
+
+
+        // --- Animación de Máquina de Escribir (Typewriter) ---
+
+        const PHRASES = [
+            "MUCHAS AVENTURAS COMIENZAN CON UN \"SÍ\"", // Español
+            "多くの冒険は「はい」から始まります", // Japonés
+            "VIELE ABENTEUER BEGINNEN MIT EINEM \"JA\"", // Alemán
+            "MANY ADVENTURES BEGIN WITH A \"YES\"", // Inglés
+        ];
+        let phraseIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        let typingTimeout;
+        const typingSpeed = 100; // Velocidad de escritura
+        const deletingSpeed = 50; // Velocidad de borrado
+        const pauseTime = 1500; // Pausa antes de borrar o escribir la siguiente
+
+        function typeWriter() {
+            const currentPhrase = PHRASES[phraseIndex];
+            const displayElement = document.getElementById('typewriter-text');
+            
+            if (isDeleting) {
+                // Borrando
+                displayElement.textContent = currentPhrase.substring(0, charIndex - 1);
+                charIndex--;
+            } else {
+                // Escribiendo
+                displayElement.textContent = currentPhrase.substring(0, charIndex + 1);
+                charIndex++;
+            }
+
+            let speed = isDeleting ? deletingSpeed : typingSpeed;
+
+            if (!isDeleting && charIndex === currentPhrase.length) {
+                // Termina de escribir, pausar y empezar a borrar
+                speed = pauseTime;
+                isDeleting = true;
+            } else if (isDeleting && charIndex === 0) {
+                // Termina de borrar, pasar a la siguiente frase
+                isDeleting = false;
+                phraseIndex = (phraseIndex + 1) % PHRASES.length;
+                speed = 500; // Pausa corta antes de empezar a escribir la siguiente
+            }
+
+            typingTimeout = setTimeout(typeWriter, speed);
+        }
+        
+        // --- Inicialización y Configuración de Escena (Three.js) ---
+
+        function initScene() {
+            const canvas = document.getElementById('anatomyCanvas');
+            
+            // 1. Configuración de Escena y Renderer
+            scene = new THREE.Scene();
+            // Determinar color de fondo inicial
+            const initialBackgroundColor = document.documentElement.classList.contains('dark') ? 0x1f2937 : 0xf0f4f8;
+            scene.background = new THREE.Color(initialBackgroundColor); 
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+
+            // 2. Configuración de Cámara (Perspectiva para 3D)
+            camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            camera.position.z = 5;
+            camera.position.y = 1.5;
+
+            // 3. Iluminación
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1); 
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 4);
+            directionalLight.position.set(5, 10, 7.5);
+            scene.add(directionalLight);
+
+            // Manejo de redimensionamiento
+            window.addEventListener('resize', onWindowResize, false);
+            onWindowResize(); 
+        }
+
+        function onWindowResize() {
+            // Asegúrate de tomar el tamaño del contenedor que ahora está dentro del grid
+            const container = document.querySelector('.anatomy-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        }
+
+        // --- Lógica de Vistas y Controles ---
+
+        function clearScene() {
+            if (relationalModel) scene.remove(relationalModel);
+            if (tissueModel) scene.remove(tissueModel);
+            if (movementModel) scene.remove(movementModel);
+        }
+
+        function setView(view) {
+            currentView = view;
+            clearScene();
+            
+            // Actualizar pestañas (Uso de primary-blue)
+            const isDark = document.documentElement.classList.contains('dark');
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('bg-primary-blue', 'text-white', 'shadow-lg', 'dark:bg-blue-700', 'dark:text-white');
+                btn.classList.add('text-gray-600', 'hover:bg-blue-100', 'dark:text-gray-300', 'dark:hover:bg-gray-800');
+            });
+            const activeTab = document.getElementById(`tab-${view}`);
+            activeTab.classList.add('bg-primary-blue', 'text-white', 'shadow-lg');
+            activeTab.classList.remove('text-gray-600', 'hover:bg-blue-100');
+            if(isDark) {
+                activeTab.classList.add('dark:bg-blue-700', 'dark:text-white');
+                activeTab.classList.remove('dark:text-gray-300', 'dark:hover:bg-gray-800');
+            }
+
+
+            const controlsPanel = document.getElementById('controls-panel');
+            controlsPanel.innerHTML = ''; 
+
+            switch (view) {
+                case 'relational':
+                    relationalModel = createRelationalModel();
+                    scene.add(relationalModel);
+                    camera.position.set(0, 1.5, 4); 
+                    controlsPanel.innerHTML = getRelationalControlsHTML();
+                    resetRelational(false);
+                    break;
+                case 'tissues':
+                    tissueModel = createTissueModel();
+                    scene.add(tissueModel);
+                    camera.position.set(3, 1, 3); 
+                    controlsPanel.innerHTML = getTissueControlsHTML();
+                    // Estado inicial: solo hueso visible
+                    toggleTissueVisibility('kotsu', true);
+                    toggleTissueVisibility('kan', false);
+                    toggleTissueVisibility('kin', false);
+                    toggleTissueVisibility('hifu', false);
+                    break;
+                case 'movement':
+                    movementModel = createMovementModel();
+                    scene.add(movementModel);
+                    camera.position.set(3, 2.5, 3); 
+                    controlsPanel.innerHTML = getMovementControlsHTML();
+                    movementState.forearm.rotation.z = 0; // Resetear
+                    movementState.isFlexed = false;
+                    movementState.targetRotation = 0;
+                    break;
+            }
+            
+            // Llamar a la función para configurar los eventos de traducción DESPUÉS de inyectar el HTML
+            setupTranslationHover(); 
+
+            camera.lookAt(scene.position);
+            addOrbitControls(); 
+            // Asegurar que el canvas se redimensione a su nuevo tamaño en el grid
+            onWindowResize();
+        }
+
+        /**
+         * Función para añadir el efecto de traducción en hover a todos los botones de control.
+         * AHORA TAMBIÉN GESTIONA EL BLUR Y EL MODAL DESPUÉS DE 2.5 SEGUNDOS.
+         */
+        function setupTranslationHover() {
+            const buttons = document.querySelectorAll('.manga-action');
+            
+            function handleMouseEnter(event) {
+                const button = event.currentTarget;
+                const wrapper = button.querySelector('.btn-text-wrapper');
+                if (!wrapper) return;
+
+                // 1. Limpiar cualquier timeout anterior
+                if (button.translationTimeout) {
+                    clearTimeout(button.translationTimeout);
+                }
+                if (button.blurTimeout) {
+                    clearTimeout(button.blurTimeout);
+                }
+
+                // Ocultar el texto japonés inmediatamente (asegura que no haya dos textos visibles)
+                wrapper.classList.remove('show-translation');
+
+                // --- GESTIÓN DE LA TRADUCCIÓN (1.0s) ---
+                button.translationTimeout = setTimeout(() => {
+                    // Solo si todavía estamos en hover, mostramos la traducción
+                    if (button.matches(':hover')) {
+                       wrapper.classList.add('show-translation');
+                    }
+                    button.translationTimeout = null;
+                }, 1000); 
+
+                // --- GESTIÓN DEL BLUR / MODAL DE EXPLICACIÓN (2.5s) ---
+                button.blurTimeout = setTimeout(() => {
+                    // Solo si todavía estamos en hover y el modal no está activo
+                    if (button.matches(':hover') && !document.body.classList.contains('blur-active')) {
+                        toggleBlur(true);
+                    }
+                    button.blurTimeout = null;
+                }, 2500); // 2.5 segundos para mostrar la explicación
+            }
+
+            function handleMouseLeave(event) {
+                const button = event.currentTarget;
+                const wrapper = button.querySelector('.btn-text-wrapper');
+                if (!wrapper) return;
+
+                // 1. Cancelar temporizadores pendientes (traducción y blur)
+                if (button.translationTimeout) {
+                    clearTimeout(button.translationTimeout);
+                    button.translationTimeout = null;
+                }
+                if (button.blurTimeout) {
+                    clearTimeout(button.blurTimeout);
+                    button.blurTimeout = null;
+                }
+
+                // 2. Revertir al texto japonés inmediatamente
+                wrapper.classList.remove('show-translation');
+            }
+
+            buttons.forEach(button => {
+                // Eliminar cualquier listener anterior para evitar duplicados al cambiar de vista
+                button.removeEventListener('mouseenter', button.__enterListener);
+                button.removeEventListener('mouseleave', button.__leaveListener);
+
+                // Guardar la referencia a la función para poder eliminarla
+                button.__enterListener = handleMouseEnter;
+                button.__leaveListener = handleMouseLeave;
+
+                button.addEventListener('mouseenter', button.__enterListener);
+                button.addEventListener('mouseleave', button.__leaveListener);
+                
+                // Asegurar que el estado inicial no tiene los timeouts guardados
+                button.translationTimeout = null;
+                button.blurTimeout = null;
+            });
+        }
+
+        // --- Modelos 3D (Sin cambios) ---
+
+        /**
+         * Crea un modelo de extremidad (brazo) para demostrar términos de relación.
+         */
+        function createRelationalModel() {
+            const group = new THREE.Group();
+            group.rotation.x = Math.PI / 8; // Inclinar para mejor vista de relación
+
+            // Eje Proximal (Hombro)
+            const proximalSphere = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), new THREE.MeshLambertMaterial({ color: 0x15b282 }));
+            proximalSphere.position.set(0, 3, 0);
+            proximalSphere.name = 'PROXIMAL_JO'; 
+            group.add(proximalSphere);
+            
+            // Hueso principal (Proximal)
+            const upperBoneGeo = new THREE.CylinderGeometry(0.2, 0.2, 2.5, 32);
+            const upperBoneMat = new THREE.MeshLambertMaterial({ color: 0x9ca3af });
+            const upperBone = new THREE.Mesh(upperBoneGeo, upperBoneMat);
+            upperBone.position.set(0, 1.75, 0);
+            upperBone.name = 'JOU_ZENPO_NAIZOKU'; 
+            group.add(upperBone);
+            
+            // Articulación (Codo)
+            const jointSphere = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshLambertMaterial({ color: 0xef4444 }));
+            jointSphere.position.set(0, 0.5, 0);
+            jointSphere.name = 'KOHO'; // Usado para rotar en Posterior
+            group.add(jointSphere);
+
+            // Hueso secundario (Distal)
+            const lowerBoneGeo = new THREE.CylinderGeometry(0.15, 0.15, 1.5, 32);
+            const lowerBoneMat = new THREE.MeshLambertMaterial({ color: 0x9ca3af });
+            const lowerBone = new THREE.Mesh(lowerBoneGeo, lowerBoneMat);
+            lowerBone.position.set(0, -0.25, 0);
+            lowerBone.name = 'KA_GAIZOKU'; 
+            group.add(lowerBone);
+            
+            // Eje Distal (Mano)
+            const distalSphere = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshLambertMaterial({ color: 0xf59e0b }));
+            distalSphere.position.set(0, -1.25, 0);
+            distalSphere.name = 'DISTAL_KA'; 
+            group.add(distalSphere);
+
+            return group;
+        }
+
+        /**
+         * Crea un modelo de tejido apilado para alternar la visibilidad de Kin, Kotsu, Kan, Hifu.
+         */
+        function createTissueModel() {
+            const group = new THREE.Group();
+            group.rotation.x = -Math.PI / 8; 
+            group.position.y = 0; 
+            group.scale.set(1.5, 1.5, 1.5); 
+
+            // 1. Hueso (Kotsu - 骨) - Capa más interna
+            const kotsuGeo = new THREE.CylinderGeometry(0.3, 0.3, 2.5, 32); 
+            const kotsuMat = new THREE.MeshLambertMaterial({ color: 0xf5f5f5, transparent: true, opacity: 1 });
+            const kotsu = new THREE.Mesh(kotsuGeo, kotsuMat);
+            kotsu.name = 'kotsu';
+            kotsu.position.y = 0; 
+            group.add(kotsu);
+
+            // 2. Articulación (Kansetsu - 関節) - Punto de unión
+            const kanGeo = new THREE.SphereGeometry(0.4, 32, 32);
+            const kanMat = new THREE.MeshLambertMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.8 }); 
+            const kan = new THREE.Mesh(kanGeo, kanMat);
+            kan.name = 'kan';
+            kan.position.y = 1.25; 
+            group.add(kan);
+
+            // 3. Músculo (Kin - 筋) - Capa media
+            const kinGeo = new THREE.CylinderGeometry(0.4, 0.4, 3, 32); 
+            const kinMat = new THREE.MeshLambertMaterial({ color: 0xdc2626, transparent: true, opacity: 0.5 }); 
+            const kin = new THREE.Mesh(kinGeo, kinMat);
+            kin.name = 'kin';
+            kin.position.y = 0;
+            group.add(kin);
+
+            // 4. Piel (Hifu - 皮膚) - Capa externa
+            const hifuGeo = new THREE.CylinderGeometry(0.5, 0.5, 3.1, 32); 
+            const hifuMat = new THREE.MeshLambertMaterial({ color: 0xfacc15, transparent: true, opacity: 0.2 }); 
+            const hifu = new THREE.Mesh(hifuGeo, hifuMat);
+            hifu.name = 'hifu';
+            hifu.position.y = 0;
+            group.add(hifu);
+
+            return group;
+        }
+
+        /**
+         * Crea un modelo de brazo para demostrar Flexión/Extensión.
+         */
+        function createMovementModel() {
+            const armGroup = new THREE.Group();
+            armGroup.position.y = 1; 
+
+            // Brazo (Upper Arm - 上腕)
+            const upperArmGeo = new THREE.CylinderGeometry(0.15, 0.15, 2, 32);
+            const upperArmMat = new THREE.MeshLambertMaterial({ color: 0x059669 }); 
+            const upperArm = new THREE.Mesh(upperArmGeo, upperArmMat);
+            upperArm.position.y = 1; 
+
+            // El pivote principal (Hombro)
+            const pivot = new THREE.Group();
+            pivot.position.y = 0; 
+            pivot.rotation.z = Math.PI / 4; 
+            pivot.add(upperArm);
+            armGroup.add(pivot);
+
+            // Articulación del Codo (Elbow Joint)
+            const elbowJoint = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), new THREE.MeshLambertMaterial({ color: 0xef4444 })); // Rojo
+
+            // Pivote del Codo (punto de rotación para antebrazo)
+            const elbowPivot = new THREE.Group();
+            elbowPivot.position.y = -1; 
+            pivot.add(elbowPivot);
+            elbowPivot.add(elbowJoint);
+
+            // Antebrazo (Forearm - 前腕)
+            const forearmGeo = new THREE.CylinderGeometry(0.12, 0.12, 1.8, 32);
+            const forearmMat = new THREE.MeshLambertMaterial({ color: 0x10b981 }); 
+            const forearm = new THREE.Mesh(forearmGeo, forearmMat);
+            forearm.position.y = -0.9; 
+
+            elbowPivot.add(forearm);
+
+            // Actualizar estado global
+            movementState.forearm = elbowPivot;
+
+            return armGroup;
+        }
+
+
+        // --- Controles HTML (Actualizados con el color principal y de acento) ---
+        function createButtonContent(japaneseText, spanishText) {
+            return `
+                <div class="btn-text-wrapper">
+                    <span class="original-text">${japaneseText}</span>
+                    <span class="translation-text">${spanishText}</span>
+                </div>
+            `;
+        }
+
+
+        function getRelationalControlsHTML() {
+            return `
+                <h2 class="text-2xl font-semibold mb-4 text-primary-blue dark:text-accent-cyan">用語の関係 (Términos de Relación)</h2>
+                <!-- Grilla de 2x4 para el panel lateral -->
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Fila 1: Ejes Globales (Usando Cyan y Teal) -->
+                    <button onclick="highlightRelational('PROXIMAL_JO', '近位 (Proximal)', '#06b6d4')" class="control-btn manga-action bg-cyan-500">
+                        ${createButtonContent('近位 (Kin\'i)', 'Proximal')}
+                    </button>
+                    <button onclick="highlightRelational('DISTAL_KA', '遠位 (Distal)', '#14b8a6')" class="control-btn manga-action bg-teal-500">
+                        ${createButtonContent('遠位 (En\'i)', 'Distal')}
+                    </button>
+                    
+                    <!-- Fila 2: Ejes Frontales y Laterales (Usando Green y Yellow) -->
+                    <button onclick="highlightRelational('JOU', '上方 (Superior)', '#10b981')" class="control-btn manga-action bg-green-500">
+                        ${createButtonContent('上 (Jō)', 'Superior')}
+                    </button>
+                    <button onclick="highlightRelational('KA', '下方 (Inferior)', '#f59e0b')" class="control-btn manga-action bg-yellow-500">
+                        ${createButtonContent('下 (Ka)', 'Inferior')}
+                    </button>
+                    
+                    <!-- Fila 3: Anterior/Posterior, Medial/Lateral (Usando Primary Blue, Red, Purple, Orange) -->
+                    <button onclick="highlightRelational('ZENPO', '前方 (Anterior)', '#3b82f6')" class="control-btn manga-action bg-blue-500">
+                        ${createButtonContent('前方 (Zenpō)', 'Anterior')}
+                    </button>
+                    <button onclick="highlightRelational('KOHO', '後方 (Posterior)', '#ef4444')" class="control-btn manga-action bg-red-500">
+                        ${createButtonContent('後方 (Kōhō)', 'Posterior')}
+                    </button>
+                    <button onclick="highlightRelational('NAIZOKU', '内側 (Medial)', '#9333ea')" class="control-btn manga-action bg-purple-500">
+                        ${createButtonContent('内側 (Naizoku)', 'Medial')}
+                    </button>
+                    <button onclick="highlightRelational('GAIZOKU', '外側 (Lateral)', '#f97316')" class="control-btn manga-action bg-orange-500">
+                        ${createButtonContent('外側 (Gaizoku)', 'Lateral')}
+                    </button>
+
+                    <!-- Fila de Reset (Ocupa todo el ancho) -->
+                    <button onclick="resetRelational()" class="control-btn manga-action col-span-2 bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-white mt-2">
+                        ${createButtonContent('リセット', 'Resetear Vista')}
+                    </button>
+                </div>
+                <p id="description-text" class="mt-4 p-3 bg-blue-50 border-l-4 border-primary-blue rounded text-blue-800 dark:bg-gray-900 dark:border-blue-700 dark:text-blue-300 text-sm">
+                    **近位 (Kin'i)** y **遠位 (En'i)** se refieren a qué tan cerca o lejos está una estructura del tronco.
+                </p>
+            `;
+        }
+
+        function getTissueControlsHTML() {
+            return `
+                <h2 class="text-2xl font-semibold mb-4 text-primary-blue dark:text-accent-cyan">主要な組織 (Tejidos Principales)</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="toggleTissue('kotsu')" id="toggle-kotsu" class="control-btn manga-action bg-gray-500">
+                        ${createButtonContent('骨 (Kotsu)', 'Hueso')}
+                    </button>
+                    <button onclick="toggleTissue('kin')" id="toggle-kin" class="control-btn manga-action bg-red-500">
+                        ${createButtonContent('筋 (Kin)', 'Músculo')}
+                    </button>
+                    <button onclick="toggleTissue('kan')" id="toggle-kan" class="control-btn manga-action bg-primary-blue">
+                        ${createButtonContent('関節 (Kansetsu)', 'Articulación')}
+                    </button>
+                    <button onclick="toggleTissue('hifu')" id="toggle-hifu" class="control-btn manga-action bg-yellow-500">
+                        ${createButtonContent('皮膚 (Hifu)', 'Piel')}
+                    </button>
+                </div>
+                <p class="mt-4 p-3 bg-blue-50 border-l-4 border-primary-blue rounded text-blue-800 dark:bg-gray-900 dark:border-blue-700 dark:text-blue-300 text-sm">
+                    Alterna la visibilidad para entender las capas y la interdependencia de los tejidos.
+                </p>
+            `;
+        }
+
+        function getMovementControlsHTML() {
+            return `
+                <h2 class="text-2xl font-semibold mb-4 text-primary-blue dark:text-accent-cyan">運動パターン (Patrones de Movimiento)</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Botón de Flexión (JUNTAR) con Estilo Manga (Color principal azul) -->
+                    <button onclick="setMovement(true)" class="manga-action control-btn bg-primary-blue">
+                        ${createButtonContent('屈曲 (Kukkyoku)', 'Flexión')}
+                    </button>
+                    <!-- Botón de Extensión (SEPARAR) con Estilo Manga (Color de acento verde) -->
+                    <button onclick="setMovement(false)" class="manga-action control-btn bg-green-500">
+                        ${createButtonContent('伸展 (Shinten)', 'Extensión')}
+                    </button>
+                </div>
+                <p id="movement-desc" class="mt-4 p-3 bg-blue-50 border-l-4 border-primary-blue rounded text-blue-800 dark:bg-gray-900 dark:border-blue-700 dark:text-blue-300 text-sm">
+                    Haz clic para mover la articulación del codo y observar la 屈曲 (Kukkyoku) y la 伸展 (Shinten).
+                </p>
+            `;
+        }
+
+        // --- Lógica de Interacción (Funciones Three.js) ---
+
+        // Módulo de Relaciones
+        function highlightRelational(areaCode, label, color) {
+            resetRelational(true); 
+            const desc = document.getElementById('description-text');
+            desc.innerHTML = `**${label}**`;
+            desc.style.backgroundColor = color.replace('500', '100');
+            desc.style.borderColor = color;
+            
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                desc.style.backgroundColor = '#1f2937';
+                desc.style.borderColor = color;
+                desc.style.color = '#d1d5db';
+            } else {
+                desc.style.color = '#1e3a8a';
+            }
+
+
+            relationalModel.traverse((child) => {
+                if (child.isMesh) {
+                    // Restablecer color base (gris) para todos los huesos
+                    if (child.name.includes('JOU_ZENPO_NAIZOKU') || child.name.includes('KA_GAIZOKU')) {
+                        child.material.color.set(0x9ca3af); // Gris suave para huesos
+                        child.material.opacity = 1;
+                        child.material.transparent = false;
+                    } else if (child.name.includes('PROXIMAL') || child.name.includes('DISTAL') || child.name.includes('KOHO')) {
+                         child.material.color.set(0xef4444); // Rojo para articulaciones/extremos
+                         child.material.opacity = 0.5;
+                         child.material.transparent = true;
+                    }
+
+                    // Lógica para resaltar según el área
+                    let shouldHighlight = false;
+                    
+                    // Ejes Globales (Superior/Inferior, Proximal/Distal)
+                    if (areaCode === 'PROXIMAL_JO' && child.name.includes('PROXIMAL_JO')) shouldHighlight = true;
+                    if (areaCode === 'DISTAL_KA' && child.name.includes('DISTAL_KA')) shouldHighlight = true;
+
+                    // Para Superior (上) se resalta todo lo de arriba
+                    if (areaCode === 'JOU' && child.position.y > 0.5) { 
+                        shouldHighlight = true;
+                    }
+                    // Para Inferior (下) se resalta todo lo de abajo
+                    if (areaCode === 'KA' && child.position.y <= 0.5) { 
+                        shouldHighlight = true;
+                    }
+
+                    // Ejes Frontales/Laterales (usamos los huesos cilíndricos)
+                    if (areaCode === 'ZENPO' && child.name.includes('JOU_ZENPO_NAIZOKU')) shouldHighlight = true;
+                    
+                    // Lateral/Medial son difíciles de simular en un solo cilindro, así que resaltamos ambos huesos
+                    if (areaCode === 'NAIZOKU' && (child.name.includes('JOU_ZENPO_NAIZOKU') || child.name.includes('PROXIMAL_JO'))) shouldHighlight = true;
+                    if (areaCode === 'GAIZOKU' && (child.name.includes('KA_GAIZOKU') || child.name.includes('DISTAL_KA'))) shouldHighlight = true;
+                    
+                    // Resaltar
+                    if (shouldHighlight) {
+                        child.material.color.set(color);
+                        child.material.opacity = 1;
+                        child.material.transparent = false;
+                    }
+
+                    // Rotación para Kōhō (Posterior)
+                    if (areaCode === 'KOHO' && child.name.includes('KOHO')) {
+                        child.material.color.set(color);
+                        child.material.opacity = 1;
+                        child.material.transparent = false;
+                        relationalModel.rotation.y = Math.PI; 
+                    }
+                }
+            });
+
+            // Resetear rotación si no es Kōhō
+            if (areaCode !== 'KOHO') {
+                relationalModel.rotation.y = 0;
+            }
+        }
+
+        function resetRelational(keepLabel = false) {
+            relationalModel.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.name.includes('PROXIMAL') || child.name.includes('DISTAL') || child.name.includes('KOHO')) {
+                        child.material.color.set(0xef4444); // Rojo para articulaciones/extremos
+                        child.material.opacity = 0.5;
+                        child.material.transparent = true;
+                    } else {
+                        child.material.color.set(0x9ca3af); // Gris para huesos
+                        child.material.opacity = 1;
+                        child.material.transparent = false;
+                    }
+                }
+            });
+            relationalModel.rotation.y = 0;
+            if (!keepLabel) {
+                const desc = document.getElementById('description-text');
+                desc.innerHTML = "**近位 (Kin'i)** y **遠位 (En'i)** se refieren a qué tan cerca o lejos está una estructura del tronco.";
+                // Ajuste de colores en reset (Usando primary-blue)
+                if (document.documentElement.classList.contains('dark')) {
+                    desc.style.backgroundColor = '#111827'; // gray-900
+                    desc.style.borderColor = '#1d4ed8'; // blue-700
+                    desc.style.color = '#93c5fd'; // blue-300
+                } else {
+                    desc.style.backgroundColor = '#eff6ff'; // blue-50
+                    desc.style.borderColor = '#2563eb'; // primary-blue (blue-600)
+                    desc.style.color = '#1e40af'; // blue-800
+                }
+            }
+        }
+
+        // Módulo de Tejidos
+        function toggleTissueVisibility(name, isVisible) {
+            if (!tissueModel) return;
+            tissueModel.traverse((child) => {
+                if (child.isMesh && child.name === name) {
+                    child.visible = isVisible;
+                    const btn = document.getElementById(`toggle-${name}`);
+                    if (btn) {
+                        if (isVisible) {
+                            btn.classList.add('ring-4', 'ring-offset-2', 'ring-opacity-50');
+                            btn.classList.remove('opacity-60');
+                        } else {
+                            btn.classList.remove('ring-4', 'ring-offset-2', 'ring-opacity-50');
+                            btn.classList.add('opacity-60');
+                        }
+                    }
+                }
+            });
+        }
+
+        function toggleTissue(name) {
+            const mesh = tissueModel.children.find(c => c.name === name);
+            if (mesh) {
+                toggleTissueVisibility(name, !mesh.visible);
+            }
+        }
+        
+        // Módulo de Movimiento
+        function setMovement(flex) {
+            movementState.isFlexed = flex;
+            // Rotación objetivo en el eje Z: 0 (Extensión) o -90 grados (-Math.PI / 2 para Flexión)
+            movementState.targetRotation = flex ? -Math.PI / 2 : 0;
+            const desc = document.getElementById('movement-desc');
+            const isDark = document.documentElement.classList.contains('dark');
+            
+            // Restablecer clases de borde (usando primary-blue y green-500)
+            desc.classList.remove('border-green-500', 'border-primary-blue', 'dark:border-green-700', 'dark:border-blue-700');
+
+            if (flex) {
+                desc.innerHTML = '⚡ **屈曲 (Kukkyoku - Flexión)**: El codo se flexiona, acercando el antebrazo (前腕 - Zenwan) al brazo.';
+                desc.classList.add('border-primary-blue'); // Flexión usa el color principal (azul)
+                if (isDark) desc.classList.add('dark:border-blue-700');
+            } else {
+                desc.innerHTML = '✅ **伸展 (Shinten - Extensión)**: El codo se extiende, volviendo el antebrazo (前腕 - Zenwan) a la posición inicial.';
+                desc.classList.add('border-green-500'); // Extensión usa el color verde (secundario)
+                if (isDark) desc.classList.add('dark:border-green-700');
+            }
+        }
+
+        function updateMovement() {
+            if (!movementState.forearm) return;
+            const currentRot = movementState.forearm.rotation.z;
+
+            // Transición suave hacia la rotación objetivo
+            if (Math.abs(movementState.targetRotation - currentRot) > movementState.speed) {
+                if (movementState.targetRotation > currentRot) {
+                    movementState.forearm.rotation.z += movementState.speed;
+                } else {
+                    movementState.forearm.rotation.z -= movementState.speed;
+                }
+            } else {
+                movementState.forearm.rotation.z = movementState.targetRotation;
+            }
+        }
+
+        // --- Bucle de Animación Principal ---
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (currentView === 'movement') {
+                updateMovement(); // Actualiza la animación de flexión/extensión
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- Controles de Órbita (para que el usuario pueda rotar el modelo) ---
+        function addOrbitControls() {
+            const canvas = document.getElementById('anatomyCanvas');
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+
+            const handleInteraction = (e) => {
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                const deltaX = clientX - previousMousePosition.x;
+                const deltaY = clientY - previousMousePosition.y;
+
+                // Rotar el modelo principal (el grupo)
+                const model = scene.children.find(c => c.isGroup); 
+                if (model) {
+                    model.rotation.y += deltaX * 0.005;
+                    // Limitar rotación en X
+                    model.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, model.rotation.x + deltaY * 0.005));
+                }
+
+                previousMousePosition.x = clientX;
+                previousMousePosition.y = clientY;
+            };
+
+            const startInteraction = (e) => {
+                e.preventDefault();
+                isDragging = true;
+                previousMousePosition.x = e.touches ? e.touches[0].clientX : e.clientX;
+                previousMousePosition.y = e.touches ? e.touches[0].clientY : e.clientY;
+            };
+
+            const endInteraction = () => {
+                isDragging = false;
+            };
+
+            canvas.onmousedown = startInteraction;
+            canvas.onmousemove = (e) => { if (isDragging) handleInteraction(e); };
+            canvas.onmouseup = endInteraction;
+            canvas.onmouseleave = endInteraction; 
+
+            // Eventos táctiles para móvil
+            canvas.ontouchstart = startInteraction;
+            canvas.ontouchmove = (e) => { if (isDragging) handleInteraction(e); };
+            canvas.ontouchend = endInteraction;
+        }
+
+        // --- Inicialización al cargar la ventana ---
+        window.onload = function () {
+            initScene();
+            setView('relational'); 
+            animate(); 
+            typeWriter(); // Iniciar la animación de la máquina de escribir
+        };
+
+        // Hacer las funciones accesibles globalmente
+        window.toggleDarkMode = toggleDarkMode;
+        window.setView = setView;
+        window.highlightRelational = highlightRelational;
+        window.resetRelational = resetRelational;
+        window.toggleTissue = toggleTissue;
+        window.setMovement = setMovement;
+        window.toggleBlur = toggleBlur;
+    </script>
+</body>
+</html>
