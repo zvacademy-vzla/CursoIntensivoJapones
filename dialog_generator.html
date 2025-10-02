@@ -3,33 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Diálogos - Japonés Médico</title>
+    <title>Generador de Diálogos de Rol Médico (Japonés)</title>
     <!-- Carga de Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Estilo para simular el chat/diálogo */
+        /* Estilos generales */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6; /* Gray-100 */
         }
+        
+        /* Estilos Específicos del Diálogo (Chat) */
         .dialogue-line {
             padding: 1rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
             border-radius: 0.75rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            transition: transform 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
         }
-        .dialogue-line:hover {
-            transform: translateY(-1px);
-        }
+        /* Estilo para el rol 'Professional' (Indigp) */
         .professional {
-            background-color: #e0e7ff; /* Indigo-100 */
-            border-left: 4px solid #4f46e5; /* Indigo-600 */
+            background-color: #eef2ff; /* Indigo-50 */
+            border-left: 5px solid #4f46e5; /* Indigo-600 */
+            margin-right: 10%; 
         }
+        /* Estilo para el rol 'Patient' (Orange) */
         .patient {
             background-color: #fff;
-            border-right: 4px solid #f97316; /* Orange-500 */
-            margin-left: 10%; /* Offset para distinguir visualmente */
+            border-right: 5px solid #f97316; /* Orange-500 */
+            margin-left: 10%; 
         }
         .speaker-tag {
             font-weight: bold;
@@ -37,80 +39,93 @@
             margin-bottom: 0.25rem;
         }
         .japanese-text {
-            font-size: 1.125rem; /* text-lg */
-            font-weight: 600; /* semibold */
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 700; /* bold */
             color: #1f2937; /* Gray-800 */
         }
         .romaji-text {
             font-style: italic;
             color: #4b5563; /* Gray-600 */
+            margin-top: 0.25rem;
+            font-size: 1rem;
         }
         .spanish-text {
             font-size: 0.875rem; /* text-sm */
             color: #6b7280; /* Gray-500 */
-            margin-top: 0.5rem;
+            margin-top: 0.75rem;
             border-top: 1px dashed #d1d5db;
-            padding-top: 0.5rem;
+            padding-top: 0.75rem;
         }
     </style>
 </head>
-<body class="min-h-screen p-6 sm:p-10">
+<body class="p-6 md:p-10">
 
-    <div class="max-w-4xl mx-auto">
-        <h1 class="text-3xl font-extrabold text-gray-900 mb-2">🗣️ Generador de Diálogos Médicos</h1>
-        <p class="text-gray-600 mb-8">Crea conversaciones realistas y personalizadas en japonés para practicar roles específicos. Elige un escenario y la IA generará el diálogo con su traducción y *romaji*.</p>
+    <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl">
+        <header class="mb-8 border-b pb-4">
+            <div class="flex items-center space-x-3">
+                <span class="text-5xl">💬🇯🇵</span>
+                <h1 class="text-3xl font-extrabold text-indigo-700">Generador de Diálogos Médico-Japonés</h1>
+            </div>
+            <p class="text-gray-600 mt-2">Crea simulaciones de rol entre un **Profesional** de la salud y un **Paciente**. El diálogo se genera en Japonés, Romaji y Español.</p>
+        </header>
 
-        <!-- Formulario de Entrada -->
-        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 mb-8">
-            <h2 class="text-xl font-bold text-indigo-600 mb-4">Configurar Escenario</h2>
+        <!-- Formulario de Entrada del Diálogo -->
+        <div class="mb-10 p-6 bg-gray-50 rounded-lg border border-gray-200">
+            <label for="scenarioInput" class="block text-lg font-bold text-gray-700 mb-3">Paso 1: Describe el Escenario Médico</label>
+            <textarea id="scenarioInput" rows="4" class="w-full p-4 border-2 border-indigo-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out shadow-sm" placeholder="Ej: Fisioterapeuta pidiendo a un paciente que levante su rodilla (膝 - Hiza) para evaluar la amplitud de movimiento y el dolor. El paciente es anciano y cortés."></textarea>
             
-            <label for="scenarioInput" class="block text-sm font-medium text-gray-700 mb-2">Describe el escenario (Ej: Fisioterapeuta evaluando el dolor de rodilla de un paciente de 60 años).</label>
-            <textarea id="scenarioInput" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out" placeholder="Describe la situación, los roles y el tema médico..."></textarea>
-            
-            <button id="generateButton" onclick="generateDialogue()" class="mt-4 w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition duration-150 ease-in-out shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <button id="generateDialogueButton" onclick="generateDialogue()" class="mt-4 w-full sm:w-auto px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition duration-150 ease-in-out shadow-lg focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-indigo-500">
                 Generar Diálogo
             </button>
         </div>
 
         <!-- Área de Resultados y Loading -->
         <div class="mt-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">Diálogo Generado</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">Paso 2: Diálogo de Práctica</h2>
 
             <!-- Indicador de Carga -->
-            <div id="loadingIndicator" class="hidden flex flex-col items-center justify-center p-10 bg-white rounded-xl shadow-lg border border-gray-200">
-                <div class="animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-indigo-500 border-gray-200 mb-4"></div>
-                <p class="text-lg font-semibold text-gray-600">Generando conversación bilingüe...</p>
-                <p class="text-sm text-gray-500 mt-2">Esto puede tomar unos segundos.</p>
+            <div id="loadingIndicator" class="hidden flex flex-col items-center justify-center p-12 bg-indigo-50 rounded-xl border-2 border-indigo-200">
+                <div class="animate-spin rounded-full h-16 w-16 border-4 border-t-4 border-indigo-600 border-indigo-200 mb-4"></div>
+                <p class="text-xl font-semibold text-indigo-700">Generando conversación bilingüe...</p>
+                <p class="text-md text-indigo-600 mt-2">Esto puede tomar unos segundos.</p>
             </div>
 
             <!-- Contenedor del Diálogo -->
             <div id="dialogueOutput" class="space-y-4">
-                <div id="initialMessage" class="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded-lg">
-                    <p class="font-semibold">Esperando escenario...</p>
-                    <p class="text-sm">Introduce un tema en el campo de arriba y haz clic en "Generar Diálogo" para comenzar tu práctica.</p>
+                <div id="initialMessage" class="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-6 rounded-lg shadow-md">
+                    <p class="font-bold text-lg">¡Bienvenido!</p>
+                    <p class="text-sm mt-1">Describe un escenario en el campo superior y pulsa **Generar Diálogo** para recibir una conversación de práctica profesional.</p>
                 </div>
             </div>
         </div>
     </div>
 
+
     <script>
-        // Configuración de la API de Gemini
-        const API_KEY = ""; // Se inyecta en runtime
-        // Usamos el modelo gemini-2.5-flash-preview-05-20, ya que es el recomendado para tareas de texto.
+        // --- Configuración de la API de Gemini ---
+        // La API Key se proporciona en el entorno de ejecución (Canvas)
+        const API_KEY = ""; 
         const MODEL_NAME = "gemini-2.5-flash-preview-05-20";
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
         const MAX_RETRIES = 5;
         const BASE_DELAY_MS = 1000;
+        
+        // Asignar valor de ejemplo al cargar
+        document.addEventListener('DOMContentLoaded', () => {
+            const scenarioInput = document.getElementById('scenarioInput');
+            if (scenarioInput.value.trim() === '') {
+                scenarioInput.value = 'Médico (Professional) preguntando a un paciente (Patient) si ha tenido fiebre y dónde siente el dolor en el estómago.';
+            }
+        });
+
 
         /**
          * Función principal para generar el diálogo.
          */
-        async function generateDialogue() {
+        window.generateDialogue = async function() {
             const scenario = document.getElementById('scenarioInput').value.trim();
             const outputDiv = document.getElementById('dialogueOutput');
             const loadingIndicator = document.getElementById('loadingIndicator');
-            
-            // Obtener la referencia de la mensaje inicial. Puede ser null si ya se eliminó.
             const initialMessage = document.getElementById('initialMessage'); 
 
             if (!scenario) {
@@ -118,33 +133,29 @@
                 return;
             }
 
-            // FIX: Verificar si el elemento existe antes de intentar manipular su classList.
-            if (initialMessage) {
-                initialMessage.classList.add('hidden');
-            }
-            
-            // Limpiar salida anterior y mostrar loading.
+            // Ocultar mensaje inicial y limpiar salida
+            if (initialMessage) { initialMessage.classList.add('hidden'); }
             outputDiv.innerHTML = '';
             loadingIndicator.classList.remove('hidden');
 
+            // Instrucción de sistema para forzar el formato estricto
             const systemPrompt = `
                 Eres un experto en idioma japonés y guionista de diálogos médicos. Tu tarea es crear una conversación bilingüe (Japonés, Romaji y Español) para un profesional de la salud (rol: 'Professional') y un paciente (rol: 'Patient'). 
                 El diálogo debe ser formal, cortés, y contener de 8 a 12 intercambios.
                 
-                Instrucciones de formato estrictas:
+                Instrucciones de formato estrictas (IMPORTANTE):
                 1. El diálogo debe seguir la estructura: Professional -> Patient -> Professional -> Patient...
                 2. Cada línea de diálogo DEBE estar en una línea separada.
                 3. Cada línea DEBE usar el formato exacto: **[ROL]: [Texto Japonés] / [Romaji] / [Traducción al Español]**.
                 4. Usa solo los roles 'Professional' y 'Patient'.
+                5. NO uses caracteres de formato como asteriscos, negritas o números en el output, solo el texto puro.
                 
-                Ejemplo de formato:
+                Ejemplo de formato EXACTO:
                 Professional: こんにちは。担当の理学療法士です。 / Konnichiwa. Tantō no rigaku ryōhōshi desu. / Buenos días. Soy el fisioterapeuta a cargo.
-                Patient: よろしくお願いします。 / Yoroshiku onegai shimasu. / Encantado de conocerle.
             `;
 
             const userQuery = `Genera un diálogo basado en el siguiente escenario: ${scenario}`;
 
-            // Adaptación del payload a la estructura de la API de Gemini (misma estructura que el SDK utiliza internamente para la solicitud POST)
             const payload = {
                 contents: [{ 
                     parts: [{ text: userQuery }] 
@@ -152,7 +163,6 @@
                 systemInstruction: { 
                     parts: [{ text: systemPrompt }] 
                 },
-                // Aseguramos que el modelo usado sea el correcto en el payload
                 model: MODEL_NAME 
             };
 
@@ -164,7 +174,6 @@
                 });
 
                 const result = JSON.parse(responseText);
-                // La respuesta generada está en 'candidates[0].content.parts[0].text'
                 const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo generar el diálogo. Intente con un escenario diferente.";
                 
                 renderDialogue(generatedText);
@@ -185,10 +194,10 @@
                 const response = await fetch(url, options);
                 
                 if (!response.ok) {
+                    // Manejo de Tasa Límite (429) y otros errores
                     if (response.status === 429 && retryCount < MAX_RETRIES) {
                         const delay = BASE_DELAY_MS * Math.pow(2, retryCount) + Math.random() * 1000;
-                        // No loguear reintentos como error en la consola
-                        // console.log(`[RETRY] Tasa límite alcanzada. Reintentando en ${delay.toFixed(0)}ms...`); 
+                        console.warn(`429: Rate limit. Retrying in ${Math.round(delay)}ms...`);
                         await new Promise(resolve => setTimeout(resolve, delay));
                         return fetchWithRetry(url, options, retryCount + 1);
                     }
@@ -201,8 +210,7 @@
             } catch (error) {
                 if (retryCount < MAX_RETRIES) {
                     const delay = BASE_DELAY_MS * Math.pow(2, retryCount) + Math.random() * 1000;
-                    // No loguear reintentos como error en la consola
-                    // console.log(`[RETRY] Error de red. Reintentando en ${delay.toFixed(0)}ms...`); 
+                    console.error(`Fetch failed. Retrying in ${Math.round(delay)}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     return fetchWithRetry(url, options, retryCount + 1);
                 }
@@ -217,7 +225,8 @@
             const outputDiv = document.getElementById('dialogueOutput');
             outputDiv.innerHTML = '';
             
-            const lines = text.split('\n').filter(line => line.trim().length > 0);
+            // Reemplazar saltos de línea y filtrar líneas vacías
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             
             if (lines.length === 0) {
                 alertUser('La IA generó una respuesta vacía o ilegible. Intente de nuevo.', 'alert-error');
@@ -248,24 +257,21 @@
                     `;
                     outputDiv.appendChild(dialogueElement);
                 } else {
-                    // Manejar líneas que no coinciden con el formato esperado (ej. encabezados o errores de formato de la IA)
-                    console.warn("Línea no parseada, mostrada como texto simple:", line);
-                    const errorElement = document.createElement('p');
-                    errorElement.className = 'text-sm text-red-500 italic p-2 bg-red-50 rounded';
-                    errorElement.textContent = `Error de formato en línea: ${line.substring(0, 80)}...`;
+                    // Si no se pudo parsear, mostrar la línea con un mensaje de error de formato
+                    console.warn("Línea no parseada:", line);
+                    const errorElement = document.createElement('div');
+                    errorElement.className = 'p-4 rounded-lg bg-red-100 border-l-4 border-red-500 text-red-700 mb-4';
+                    errorElement.innerHTML = `<p class="font-semibold">⚠️ Error de formato en la línea:</p><p class="mt-1 font-mono text-xs break-all">${line}</p>`;
                     outputDiv.appendChild(errorElement);
                 }
             });
         }
 
         /**
-         * Función para mostrar mensajes de alerta (sin usar alert()).
-         * Además, reinserta el mensaje inicial de bienvenida si se genera un error.
+         * Función para mostrar mensajes de alerta o información.
          */
         function alertUser(message, type = 'alert-info') {
             const outputDiv = document.getElementById('dialogueOutput');
-            
-            // 1. Limpiar diálogo anterior
             outputDiv.innerHTML = ''; 
 
             const colorMap = {
@@ -273,29 +279,21 @@
                 'alert-info': 'bg-blue-100 border-blue-500 text-blue-700'
             };
 
-            // 2. Crear y añadir la alerta
             const alertElement = document.createElement('div');
-            alertElement.className = `p-4 rounded-lg border-l-4 font-semibold ${colorMap[type] || colorMap['alert-info']} mb-4`;
+            alertElement.className = `p-6 rounded-lg border-l-4 font-semibold ${colorMap[type] || colorMap['alert-info']} mb-4 shadow-md`;
             alertElement.textContent = message;
             outputDiv.appendChild(alertElement);
             
-            // 3. Recrear y mostrar el mensaje inicial si es un error.
-            if (type === 'alert-error') {
-                 // Crear el elemento inicial de nuevo, ya que fue eliminado
-                const initialMessage = document.createElement('div');
-                initialMessage.id = 'initialMessage';
-                initialMessage.className = 'bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded-lg';
-                initialMessage.innerHTML = `
-                    <p class="font-semibold">Esperando escenario...</p>
-                    <p class="text-sm">Introduce un tema en el campo de arriba y haz clic en "Generar Diálogo" para comenzar tu práctica.</p>
-                `;
-                outputDiv.appendChild(initialMessage);
-            }
+            // Reinsertar el mensaje inicial después de la alerta
+            const initialMessage = document.createElement('div');
+            initialMessage.id = 'initialMessage';
+            initialMessage.className = 'bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-6 rounded-lg shadow-md mt-4';
+            initialMessage.innerHTML = `
+                <p class="font-bold text-lg">Esperando escenario...</p>
+                <p class="text-sm mt-1">Describe un escenario en el campo superior y pulsa **Generar Diálogo** para comenzar tu práctica de rol.</p>
+            `;
+            outputDiv.appendChild(initialMessage);
         }
-
-        // Se puede iniciar con un escenario de ejemplo precargado si se desea, pero por defecto se deja vacío.
-        document.getElementById('scenarioInput').value = 'Fisioterapeuta evaluando el dolor de espalda baja (腰痛 - Yōtsū) de un oficinista de mediana edad. La conversación debe ser sobre la intensidad del dolor y el movimiento que lo agrava.';
     </script>
 </body>
 </html>
-
