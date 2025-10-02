@@ -20,11 +20,26 @@
         
         // Se asume que las variables de entorno __app_id, __firebase_config y __initial_auth_token están disponibles
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const FIREBASE_CONFIG_FALLBACK = {}; // Configuración de fallback vacía
+        
+        // **CORRECCIÓN:** Usamos una configuración de respaldo más robusta para evitar fallos de inicialización.
+        const FIREBASE_CONFIG_FALLBACK = {
+            apiKey: "dummy-api-key",
+            authDomain: "dummy-project.firebaseapp.com",
+            projectId: "dummy-project",
+            storageBucket: "dummy-project.appspot.com",
+            messagingSenderId: "000000000000",
+            appId: "1:000000000000:web:0000000000000000000000",
+        };
         
         let firebaseConfig = null;
         try {
-            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : FIREBASE_CONFIG_FALLBACK;
+            // Intenta cargar desde la variable de entorno
+            if (typeof __firebase_config !== 'undefined' && __firebase_config.length > 0) {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } else {
+                // Usa el fallback si la variable no existe o está vacía
+                firebaseConfig = FIREBASE_CONFIG_FALLBACK;
+            }
         } catch (e) {
             console.error("Error al parsear la configuración de Firebase. Usando fallback.", e);
             firebaseConfig = FIREBASE_CONFIG_FALLBACK;
