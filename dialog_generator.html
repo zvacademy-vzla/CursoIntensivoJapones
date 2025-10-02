@@ -7,11 +7,11 @@
     <!-- Carga de Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Estilo para simular el chat/diálogo */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6; /* Gray-100 */
         }
-        /* Estilo para simular el chat/diálogo */
         .dialogue-line {
             padding: 1rem;
             margin-bottom: 0.5rem;
@@ -107,15 +107,21 @@
             const scenario = document.getElementById('scenarioInput').value.trim();
             const outputDiv = document.getElementById('dialogueOutput');
             const loadingIndicator = document.getElementById('loadingIndicator');
-            const initialMessage = document.getElementById('initialMessage');
+            
+            // OBTENER LA REFERENCIA DE LA MENSAJE INICIAL. PUEDE SER NULL SI YA SE ELIMINÓ.
+            const initialMessage = document.getElementById('initialMessage'); 
 
             if (!scenario) {
                 alertUser('Por favor, describe un escenario para generar el diálogo.', 'alert-error');
                 return;
             }
 
-            // Ocultar mensaje inicial, mostrar loading, limpiar salida anterior
-            initialMessage.classList.add('hidden');
+            // FIX: Verificar si el elemento existe antes de intentar manipular su classList.
+            if (initialMessage) {
+                initialMessage.classList.add('hidden');
+            }
+            
+            // Limpiar salida anterior y mostrar loading.
             outputDiv.innerHTML = '';
             loadingIndicator.classList.remove('hidden');
 
@@ -175,7 +181,9 @@
                         await new Promise(resolve => setTimeout(resolve, delay));
                         return fetchWithRetry(url, options, retryCount + 1);
                     }
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    // Capturar el cuerpo de la respuesta para ver el error real si no es 429
+                    const errorBody = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}. Body: ${errorBody.substring(0, 100)}...`);
                 }
                 
                 return response.text();
@@ -200,6 +208,11 @@
             
             const lines = text.split('\n').filter(line => line.trim().length > 0);
             
+            if (lines.length === 0) {
+                alertUser('La IA generó una respuesta vacía o ilegible. Intente de nuevo.', 'alert-error');
+                return;
+            }
+
             lines.forEach(line => {
                 // Patrón: ROL: [Texto Japonés] / [Romaji] / [Traducción al Español]
                 const match = line.match(/^(Professional|Patient):\s*([^/]+)\s*\/\s*([^/]+)\s*\/\s*(.+)$/i);
@@ -227,38 +240,45 @@
                     // Manejar líneas que no coinciden con el formato esperado (ej. encabezados o errores de formato de la IA)
                     console.warn("Línea no parseada, mostrada como texto simple:", line);
                     const errorElement = document.createElement('p');
-                    errorElement.className = 'text-sm text-red-500 italic p-2';
-                    errorElement.textContent = `Error de formato en línea: ${line}`;
+                    errorElement.className = 'text-sm text-red-500 italic p-2 bg-red-50 rounded';
+                    errorElement.textContent = `Error de formato en línea: ${line.substring(0, 80)}...`;
                     outputDiv.appendChild(errorElement);
                 }
             });
-
-            if (outputDiv.children.length === 0) {
-                 alertUser('La IA generó una respuesta vacía o ilegible. Intente de nuevo.', 'alert-error');
-            }
         }
 
         /**
          * Función para mostrar mensajes de alerta (sin usar alert()).
+         * Además, reinserta el mensaje inicial de bienvenida si se genera un error.
          */
         function alertUser(message, type = 'alert-info') {
             const outputDiv = document.getElementById('dialogueOutput');
-            outputDiv.innerHTML = ''; // Limpiar diálogo anterior
+            
+            // 1. Limpiar diálogo anterior
+            outputDiv.innerHTML = ''; 
 
             const colorMap = {
                 'alert-error': 'bg-red-100 border-red-500 text-red-700',
                 'alert-info': 'bg-blue-100 border-blue-500 text-blue-700'
             };
 
+            // 2. Crear y añadir la alerta
             const alertElement = document.createElement('div');
-            alertElement.className = `p-4 rounded-lg border-l-4 font-semibold ${colorMap[type] || colorMap['alert-info']}`;
+            alertElement.className = `p-4 rounded-lg border-l-4 font-semibold ${colorMap[type] || colorMap['alert-info']} mb-4`;
             alertElement.textContent = message;
-            
             outputDiv.appendChild(alertElement);
-
-            // Mostrar el mensaje inicial si hay un error y no hay nada más
+            
+            // 3. Recrear y mostrar el mensaje inicial si es un error.
             if (type === 'alert-error') {
-                 document.getElementById('initialMessage').classList.remove('hidden');
+                 // Crear el elemento inicial de nuevo, ya que fue eliminado
+                const initialMessage = document.createElement('div');
+                initialMessage.id = 'initialMessage';
+                initialMessage.className = 'bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded-lg';
+                initialMessage.innerHTML = `
+                    <p class="font-semibold">Esperando escenario...</p>
+                    <p class="text-sm">Introduce un tema en el campo de arriba y haz clic en "Generar Diálogo" para comenzar tu práctica.</p>
+                `;
+                outputDiv.appendChild(initialMessage);
             }
         }
 
