@@ -104,9 +104,11 @@
     <script>
         // --- Configuración de la API de Gemini ---
         // La API Key se proporciona en el entorno de ejecución (Canvas)
-        const API_KEY = ""; 
+        const API_KEY = typeof __api_key !== 'undefined' ? __api_key : ""; 
         const MODEL_NAME = "gemini-2.5-flash-preview-05-20";
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+        // La URL de la API se construye de forma dinámica para asegurar que la clave esté incluida si está disponible.
+        const BASE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent`;
+
         const MAX_RETRIES = 5;
         const BASE_DELAY_MS = 1000;
         
@@ -132,6 +134,12 @@
                 alertUser('Por favor, describe un escenario para generar el diálogo.', 'alert-error');
                 return;
             }
+
+            if (!API_KEY) {
+                alertUser('ERROR: No se pudo encontrar la clave de la API. El entorno de ejecución no ha proporcionado la clave necesaria.', 'alert-error');
+                return;
+            }
+
 
             // Ocultar mensaje inicial y limpiar salida
             if (initialMessage) { initialMessage.classList.add('hidden'); }
@@ -166,8 +174,11 @@
                 model: MODEL_NAME 
             };
 
+            // Construir la URL completa con la clave de la API
+            const finalApiUrl = `${BASE_API_URL}?key=${API_KEY}`;
+
             try {
-                const responseText = await fetchWithRetry(API_URL, {
+                const responseText = await fetchWithRetry(finalApiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -180,7 +191,7 @@
 
             } catch (error) {
                 console.error("Error al generar el diálogo:", error);
-                alertUser(`Error al comunicarse con la IA: ${error.message}. Por favor, revise su conexión o intente de nuevo.`, 'alert-error');
+                alertUser(`Error de conexión o API: ${error.message}. Asegúrese de que la clave de la API esté disponible y el servicio esté funcionando.`, 'alert-error');
             } finally {
                 loadingIndicator.classList.add('hidden');
             }
@@ -202,7 +213,7 @@
                         return fetchWithRetry(url, options, retryCount + 1);
                     }
                     const errorBody = await response.text();
-                    throw new Error(`HTTP error! status: ${response.status}. Detalle: ${errorBody.substring(0, 100)}...`);
+                    throw new Error(`HTTP error! status: ${response.status}. Detalle: ${errorBody.substring(0, 500)}...`);
                 }
                 
                 return response.text();
@@ -258,10 +269,10 @@
                     outputDiv.appendChild(dialogueElement);
                 } else {
                     // Si no se pudo parsear, mostrar la línea con un mensaje de error de formato
-                    console.warn("Línea no parseada:", line);
+                    console.warn("Línea no parseada (Formato incorrecto de la IA):", line);
                     const errorElement = document.createElement('div');
                     errorElement.className = 'p-4 rounded-lg bg-red-100 border-l-4 border-red-500 text-red-700 mb-4';
-                    errorElement.innerHTML = `<p class="font-semibold">⚠️ Error de formato en la línea:</p><p class="mt-1 font-mono text-xs break-all">${line}</p>`;
+                    errorElement.innerHTML = `<p class="font-semibold">⚠️ Error de formato en la línea (La IA no siguió las instrucciones):</p><p class="mt-1 font-mono text-xs break-all">${line}</p>`;
                     outputDiv.appendChild(errorElement);
                 }
             });
@@ -281,7 +292,7 @@
 
             const alertElement = document.createElement('div');
             alertElement.className = `p-6 rounded-lg border-l-4 font-semibold ${colorMap[type] || colorMap['alert-info']} mb-4 shadow-md`;
-            alertElement.textContent = message;
+            alertElement.innerHTML = `<p class="font-bold">${message}</p>`; // Usamos innerHTML para poder usar negritas en el mensaje.
             outputDiv.appendChild(alertElement);
             
             // Reinsertar el mensaje inicial después de la alerta
