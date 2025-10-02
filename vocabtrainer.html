@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japonés Interactivo: Menú y Conversación</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados y fuente Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&family=Inconsolata:wght@700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+            min-height: 100vh;
+        }
+
+        /* --- Sidenav Styles --- */
+        #sidenav {
+            height: 100%;
+            width: 0; /* Cerrado por defecto */
+            position: fixed;
+            z-index: 100;
+            top: 0;
+            left: 0;
+            background-color: rgba(255, 255, 255, 0.98);
+            overflow-x: hidden;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            padding-top: 60px;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        #sidenav.open {
+            width: 300px; /* Ancho abierto */
+        }
+        @media (max-width: 640px) {
+            #sidenav.open {
+                width: 80%; /* Más ancho en móvil */
+            }
+        }
+        .sidenav-item {
+            transition: background-color 0.2s;
+        }
+        .sidenav-item:hover {
+            background-color: #eff6ff; /* blue-50 */
+        }
+        
+        /* --- Blur Overlay and Main Content Effect --- */
+        #main-content {
+            transition: filter 0.5s;
+        }
+        .blurry {
+            filter: blur(5px);
+            pointer-events: none; /* Deshabilita clicks en el fondo */
+        }
+
+        /* --- Animación de Manga para Globos de Texto --- */
+        @keyframes mangaPop {
+            0% { transform: scale(0.9); opacity: 0; filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+            100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+        }
+        .manga-bubble-animated {
+            animation: mangaPop 0.3s ease-out forwards;
+            opacity: 0; /* Oculto inicialmente */
+        }
+
+        /* --- Colores y Transición de Nivel --- */
+        .level-card {
+            transition: background-color 0.5s ease-in-out, border-color 0.5s ease-in-out;
+            border-width: 4px;
+        }
+        /* Colores Base */
+        .facil-color { background-color: #ecfdf5; border-color: #34d399; }
+        .medio-color { background-color: #fffbeb; border-color: #fcd34d; }
+        .dificil-color { background-color: #fef2f2; border-color: #f87171; }
+        /* Texto de Nivel */
+        .facil-text { color: #059669; }
+        .medio-text { color: #d97706; }
+        .dificil-text { color: #ef4444; }
+        
+        /* --- Estilo del Tooltip de Duolingo --- */
+        #tooltip {
+            position: fixed; 
+            background-color: #374151; /* Gray-700 */
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            z-index: 200; 
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            pointer-events: none; 
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            font-family: 'Noto Sans JP', sans-serif;
+            min-width: 150px;
+        }
+        #tooltip.visible { opacity: 1; }
+        #tooltip::before {
+            content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); 
+            width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; 
+            border-top: 8px solid #374151;
+        }
+        .japanese-word {
+            display: inline-block; cursor: pointer; padding: 0 1px; 
+            border-bottom: 2px dotted rgba(59, 130, 246, 0.5);
+        }
+        .japanese-word:hover {
+            background-color: rgba(59, 130, 246, 0.1); 
+            border-radius: 4px;
+        }
+
+        /* --- FOOTER: Typewriter Animation --- */
+        .typewriter-text-container {
+            border-right: .15em solid #f97316; /* Cursor Naranja */
+            overflow: hidden; 
+            white-space: nowrap; 
+            margin: 0 auto; 
+            letter-spacing: .15em; 
+            animation: 
+                typing 3s steps(40, end),
+                blink-caret .75s step-end infinite;
+            font-family: 'Inconsolata', monospace;
+        }
+        
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #f97316; }
+        }
+
+        /* --- FOOTER: Neon Button Style --- */
+        .neon-button {
+            text-shadow: 0 0 5px #0ff, 0 0 10px #0ff, 0 0 20px #0ff;
+            box-shadow: 0 0 5px #0ff, 0 0 20px #0ff;
+            transition: all 0.3s ease;
+        }
+        .neon-button:hover {
+            color: #fff;
+            background-color: #0ea5e9; /* Sky-600 */
+            box-shadow: 0 0 10px #0ea5e9, 0 0 30px #0ea5e9, 0 0 60px #0ea5e9;
+        }
+
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Tooltip (Duolingo Style) -->
+    <div id="tooltip" class="text-sm">
+        <div id="tooltip-content"></div>
+    </div>
+
+    <!-- SIDE NAV (MENÚ LATERAL DESPLEGABLE) -->
+    <div id="sidenav" class="p-4 flex flex-col">
+        <button id="close-sidenav-btn" class="absolute top-4 right-4 text-3xl text-gray-700 hover:text-red-500 font-bold leading-none">&times;</button>
+        <h3 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">📂 Menú de Diálogos</h3>
+        
+        <!-- Contenedor para el menú por contexto -->
+        <div id="sidenav-content" class="space-y-3 overflow-y-auto">
+            <!-- Items de navegación irán aquí -->
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div id="main-content" class="w-full flex-grow flex justify-center py-8">
+        <div id="app" class="w-full max-w-4xl mx-auto shadow-2xl rounded-2xl p-6 md:p-8 level-card facil-color">
+            
+            <!-- HEADER Y CONTROL DE NAVEGACIÓN -->
+            <header class="mb-6 flex flex-col sm:flex-row justify-between items-center relative">
+                <button id="open-sidenav-btn" class="bg-blue-600 text-white p-2 rounded-lg shadow-lg hover:bg-blue-700 transition order-2 sm:order-1 mb-4 sm:mb-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Menú Contextual
+                </button>
+                
+                <div class="text-center order-1 sm:order-2 flex-grow">
+                    <h1 id="dialog-title" class="text-2xl font-extrabold text-gray-800">Diálogo de Práctica</h1>
+                </div>
+
+                <!-- Contenedor de Información de Nivel -->
+                <div id="levelDisplay" class="px-4 py-1 rounded-full font-bold facil-color border-2 facil-text shadow-sm order-3">
+                    Nivel: Fácil
+                </div>
+            </header>
+
+            <!-- Área de Conversación y Dificultad -->
+            <div id="dialog-content-area" class="bg-white p-4 rounded-xl shadow-inner border border-gray-200">
+                
+                <!-- Selector de Dificultad (para re-renderizar la visibilidad de Romaji/Español) -->
+                <div class="flex items-center justify-end mb-4 p-2 bg-gray-50 rounded-lg">
+                    <label for="difficulty-selector" class="text-sm font-medium text-gray-700 whitespace-nowrap mr-2">Traducción:</label>
+                    <select id="difficulty-selector" class="p-1 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-800 text-sm font-semibold">
+                        <option value="easy">Fácil (JP + Romaji + ES)</option>
+                        <option value="medium" selected>Medio (JP + ES)</option>
+                        <option value="hard">Difícil (Solo JP)</option>
+                    </select>
+                </div>
+                
+                <!-- Contenedor de la conversación -->
+                <div id="conversation-log" class="space-y-4 overflow-y-auto max-h-80 p-2">
+                    <!-- Las líneas del diálogo aparecerán aquí -->
+                    <div id="initial-message" class="text-gray-500 text-center p-4">
+                        Selecciona un diálogo del **Menú Contextual** para empezar.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Controles y Traducción -->
+            <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                
+                <p id="status-message" class="text-sm text-gray-500 font-medium"></p>
+                
+                <div class="flex gap-3 w-full sm:w-auto justify-end">
+                    <button id="reset-dialog-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition duration-150 shadow-md disabled:opacity-50">
+                        Reiniciar
+                    </button>
+                    <button id="next-line-btn" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-xl hover:bg-indigo-700 transition duration-150 shadow-lg" disabled>
+                        Siguiente Línea
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- FOOTER DINÁMICO -->
+    <footer class="w-full py-6 bg-gray-800 text-white mt-8 shadow-inner border-t-4 border-indigo-600">
+        <div class="max-w-4xl mx-auto flex flex-col items-center">
+            
+            <!-- Typewriter Display -->
+            <div id="typewriter-container" class="text-center mb-4 h-8 flex justify-center items-center">
+                <h2 id="typewriter-text" class="text-xl md:text-2xl font-bold text-orange-400"></h2>
+            </div>
+            
+            <!-- Neon Button -->
+            <a href="https://www.instagram.com/zvacademy_vzla" target="_blank" 
+               class="neon-button text-white bg-blue-600 font-extrabold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105 inline-flex items-center text-lg uppercase tracking-wider">
+                Sigue a ZVA
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.727A8 8 0 016.343 5.273v14.454z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
+                </svg>
+            </a>
+            
+            <p class="text-xs text-gray-500 mt-4">&copy; 2024 Proyecto Fisioterapia Japón</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- 1. DATOS DE APLICACIÓN ---
+        
+        /**
+         * Diccionario principal EXPANDIDO para la traducción de todas las palabras/segmentos
+         * al pasar el ratón. Las frases más largas deben estar primero para la coincidencia de regex.
+         */
+        const wordDictionary = {
+            // Frases largas primero
+            "お疲れ様でした": { es: "Gracias por su esfuerzo (saludo al terminar el trabajo)", hiragana: "おつかれさまでした", kanji: "お疲れ様でした" },
+            "おはようございます": { es: "Buenos días (formal)", hiragana: "おはようございます", kanji: "御座います" }, 
+            "どうぞ、よろしくお願いします": { es: "Encantado de conocerle", hiragana: "どうぞ、よろしくおねがいします", kanji: "どうぞ、宜しくお願いします" },
+            "ありがとうございました": { es: "Muchas gracias (pasado, muy formal)", hiragana: "ありがとうございました", kanji: "有難う御座いました" },
+            "ありがとうございます": { es: "Muchas gracias", hiragana: "ありがとうございます", kanji: "有難う御座います" },
+            "お名前は、何ですか": { es: "¿Cuál es su nombre?", hiragana: "おなまえは、なんですか", kanji: "お名前は、何ですか" },
+            "お仕事は何ですか": { es: "¿Cuál es su ocupación?", hiragana: "おしごとはなんですか", kanji: "お仕事は何ですか" },
+            "もう少し押して": { es: "Presione un poco más", hiragana: "もうすこしおして", kanji: "もう少し押して" },
+            "夕食に一緒に行きませんか": { es: "¿No vamos a cenar juntos?", hiragana: "ゆうしょくにいっしょにいきませんか", kanji: "夕食に一緒に行きませんか" },
+            "緊急事態は終わりましたか": { es: "¿Terminó la situación de emergencia?", hiragana: "きんきゅうじたいはおわりましたか", kanji: "緊急事態は終わりましたか" },
+            "今日のスケジュールは": { es: "¿Cuál es el horario de hoy?", hiragana: "きょうのスケジュールは", kanji: "今日のスケジュールは" },
+            "練習の前に治療しますか": { es: "¿Hacemos la terapia antes de la práctica?", hiragana: "れんしゅうのまえにちりょうしますか", kanji: "練習の前に治療しますか" },
+            "練習の後で、お願いします": { es: "Después de la práctica, por favor.", hiragana: "れんしゅうのあとで、おねがいします", kanji: "練習の後で、お願いします" },
+            "捻挫の治療が必要ですか": { es: "¿Necesita tratamiento para el esguince?", hiragana: "ねんざのちりょうがひつようですか", kanji: "捻挫の治療が必要ですか" },
+            "腰の痛みは悪化していますか": { es: "¿Ha empeorado el dolor de espalda?", hiragana: "こしのいたみはあっかしていますか", kanji: "腰の痛みは悪化していますか" },
+            "この選手は安静が必要です": { es: "Este atleta necesita reposo.", hiragana: "このせんしゅはあんせいが必要です", kanji: "この選手は安静が必要です" },
+
+            // Vocabulario y Partículas (para máxima cobertura)
+            "コーチ": { es: "Entrenador/Coach", hiragana: "コーチ", kanji: "N/A" },
+            "スタッフ": { es: "Staff/Personal", hiragana: "スタッフ", kanji: "N/A" },
+            "選手": { es: "Atleta/Jugador", hiragana: "せんしゅ", kanji: "選手" },
+            "ベネズエラ": { es: "Venezuela", hiragana: "ベネズエラ", kanji: "N/A" },
+            "先生": { es: "Doctor/Profesor (título de respeto)", hiragana: "せんせい", kanji: "先生" },
+            "すみません": { es: "Disculpe", hiragana: "すみません", kanji: "N/A" },
+            "私は": { es: "Yo soy", hiragana: "わたしは", kanji: "私は" },
+            "理学療法士": { es: "Fisioterapeuta", hiragana: "りがくりょうほうし", kanji: "理学療法士" },
+            "です": { es: "Es/Soy (formal)", hiragana: "です", kanji: "N/A" },
+            "はい": { es: "Sí", hiragana: "はい", kanji: "はい" },
+            "そうです": { es: "Así es", hiragana: "そうです", kanji: "N/A" },
+            "お仕事": { es: "Trabajo/Ocupación", hiragana: "おしごと", kanji: "お仕事" },
+            "何": { es: "¿Qué?", hiragana: "なに", kanji: "何" },
+            "どこ": { es: "¿Dónde?", hiragana: "どこ", kanji: "何処" },
+            "痛い": { es: "Doloroso/Doler", hiragana: "いたい", kanji: "痛い" },
+            "ですか": { es: "¿Es...?", hiragana: "ですか", kanji: "N/A" },
+            "ここ": { es: "Aquí", hiragana: "ここ", kanji: "此処" },
+            "肩": { es: "Hombro", hiragana: "かた", kanji: "肩" },
+            "腰": { es: "Cintura/Espalda Baja", hiragana: "こし", kanji: "腰" },
+            "膝": { es: "Rodilla", hiragana: "ひざ", kanji: "膝" },
+            "捻挫": { es: "Esguince", hiragana: "ねんざ", kanji: "捻挫" },
+            "治療": { es: "Tratamiento", hiragana: "ちりょう", kanji: "治療" },
+            "必要": { es: "Necesario", hiragana: "ひつよう", kanji: "必要" },
+            "ありますか": { es: "¿Hay/Existe?", hiragana: "ありますか", kanji: "N/A" },
+            "昨日": { es: "Ayer", hiragana: "きのう", kanji: "昨日" },
+            "から": { es: "Desde", hiragana: "から", kanji: "N/A" },
+            "悪化": { es: "Empeoramiento", hiragana: "あっか", kanji: "悪化" },
+            "しています": { es: "Está haciendo (progresivo)", hiragana: "しています", kanji: "N/A" },
+            "押して": { es: "Presionar/Empujar (forma -te)", hiragana: "おして", kanji: "押して" },
+            "みても": { es: "Intentar/Probar", hiragana: "みても", kanji: "見ても" },
+            "大丈夫": { es: "Todo bien/Seguro", hiragana: "だいじょうぶ", kanji: "大丈夫" },
+            "お願いします": { es: "Por favor (solicitud)", hiragana: "おねがいします", kanji: "お願いします" },
+            "歩くと": { es: "Al caminar/Si camina", hiragana: "あるくと", kanji: "歩くと" },
+            "痛みが": { es: "El dolor (sustantivo + part. sujeto)", hiragana: "いたみが", kanji: "痛みが" },
+            "強いです": { es: "Es fuerte/intenso", hiragana: "つよいです", kanji: "強いです" },
+            "今日の": { es: "De hoy", hiragana: "きょうの", kanji: "今日の" },
+            "スケジュール": { es: "Horario/Programa", hiragana: "スケジュール", kanji: "N/A" },
+            "何時": { es: "Qué hora", hiragana: "なんじ", kanji: "何時" },
+            "始まりますか": { es: "¿Comienza?", hiragana: "はじまりますか", kanji: "始まりますか" },
+            "分かります": { es: "Entiendo/Sé", hiragana: "わかります", kanji: "分かります" },
+            "まだ": { es: "Todavía/Aún", hiragana: "まだ", kanji: "N/A" },
+            "分かりません": { es: "No entiendo/No sé", hiragana: "わかりません", kanji: "分かりません" },
+            "予約": { es: "Cita/Reserva", hiragana: "よやく", kanji: "予約" },
+            "変更": { es: "Cambio", hiragana: "へんこう", kanji: "変更" },
+            "したいです": { es: "Quiero hacer", hiragana: "したいです", kanji: "N/A" },
+            "どうぞ": { es: "Adelante/Por favor", hiragana: "どうぞ", kanji: "N/A" },
+            "着替え": { es: "Cambio de ropa", hiragana: "きがえ", kanji: "着替え" },
+            "場所": { es: "Lugar", hiragana: "ばしょ", kanji: "場所" },
+            "練習": { es: "Práctica/Entrenamiento", hiragana: "れんしゅう", kanji: "練習" },
+            "前": { es: "Antes/Frente", hiragana: "まえ", kanji: "前" },
+            "後": { es: "Después", hiragana: "あと", kanji: "後" },
+            "救急車": { es: "Ambulancia", hiragana: "きゅうきゅうしゃ", kanji: "救急車" },
+            "呼んで": { es: "Llamar (forma -te)", hiragana: "よんで", kanji: "呼んで" },
+            "ください": { es: "Por favor (pedido)", hiragana: "ください", kanji: "下さい" },
+            "意識": { es: "Conciencia/Consciente", hiragana: "いしき", kanji: "意識" },
+            "ない": { es: "No hay/Inexistente", hiragana: "ない", kanji: "無い" },
+            "すぐに": { es: "Inmediatamente", hiragana: "すぐに", kanji: "直ぐに" },
+            "緊急": { es: "Emergencia", hiragana: "きんきゅう", kanji: "緊急" },
+            "調子": { es: "Condición/Estado", hiragana: "ちょうし", kanji: "調子" },
+            "どう": { es: "Cómo", hiragana: "どう", kanji: "N/A" },
+            "でしたか": { es: "¿Fue?", hiragana: "でしたか", kanji: "N/A" },
+            "良かったです": { es: "Fue bueno", hiragana: "よかったです", kanji: "良かったです" },
+            "また": { es: "De nuevo/Hasta", hiragana: "また", kanji: "N/A" },
+            "明日": { es: "Mañana", hiragana: "あした", kanji: "明日" },
+            "じゃあ": { es: "Bueno, entonces...", hiragana: "じゃあ", kanji: "N/A" },
+            "一緒に": { es: "Juntos", hiragana: "いっしょに", kanji: "一緒に" },
+            "夕食": { es: "Cena", hiragana: "ゆうしょく", kanji: "夕食" },
+            "行きませんか": { es: "¿No vamos?", hiragana: "いきませんか", kanji: "行きませんか" },
+            "水": { es: "Agua", hiragana: "みず", kanji: "水" },
+            "飲んでも": { es: "Si bebo", hiragana: "のんでも", kanji: "飲んでも" },
+            "いいですか": { es: "¿Está bien?", hiragana: "いいですか", kanji: "N/A" },
+            "まっすぐ": { es: "Recto", hiragana: "まっすぐ", kanji: "N/A" },
+            "行って": { es: "Ir (forma -te)", hiragana: "いって", kanji: "行って" },
+            "左": { es: "Izquierda", hiragana: "ひだり", kanji: "左" },
+            "午前": { es: "Mañana (a.m.)", hiragana: "ごぜん", kanji: "午前" },
+            "9時": { es: "Nueve en punto", hiragana: "くじ", kanji: "9時" },
+            "に": { es: "Partícula de tiempo/lugar", hiragana: "に", kanji: "N/A" },
+            "体調": { es: "Condición física", hiragana: "たいちょう", kanji: "体調" },
+            "良かった": { es: "Fue bueno", hiragana: "よかった", kanji: "良かった" },
+            "いいですね": { es: "Me parece bien", hiragana: "いいですね", kanji: "N/A" },
+            "ぜひ": { es: "Absolutamente/Con gusto", hiragana: "ぜひ", kanji: "是非" },
+            "事態": { es: "Situación", hiragana: "じたい", kanji: "事態" },
+            "終わりましたか": { es: "¿Terminó?", hiragana: "おわりましたか", kanji: "終わりましたか" },
+            "今": { es: "Ahora", hiragana: "いま", kanji: "今" },
+            "この": { es: "Este/a", hiragana: "この", kanji: "N/A" },
+            "安静": { es: "Reposo", hiragana: "あんせい", kanji: "安静" },
+            "にさせます": { es: "Le haré (causativo)", hiragana: "にさせます", kanji: "にさせます" },
+            "できません": { es: "No puede (hacer)", hiragana: "できません", kanji: "出来ません" },
+            "誰か": { es: "Alguien", hiragana: "だれか", kanji: "誰か" },
+            "助け": { es: "Ayuda", hiragana: "たすけ", kanji: "助け" },
+            "私が": { es: "Yo (sujeto)", hiragana: "わたしが", kanji: "私が" },
+            "手伝います": { es: "Ayudaré", hiragana: "てつだいます", kanji: "手伝います" },
+            "ところ": { es: "Lugar", hiragana: "ところ", kanji: "所" },
+            "指して": { es: "Señalar (forma -te)", hiragana: "さして", kanji: "指して" },
+            "痛み": { es: "Dolor (sustantivo)", hiragana: "いたみ", kanji: "痛み" },
+            "治療は": { es: "El tratamiento (tema)", hiragana: "ちりょうは", kanji: "治療は" },
+            "終わり": { es: "Fin", hiragana: "おわり", kanji: "終わり" },
+            
+            // Partículas Básicas (para asegurar cobertura total de caracteres)
+            "は": { es: "Partícula de tema", hiragana: "は", kanji: "は" },
+            "が": { es: "Partícula de sujeto", hiragana: "が", kanji: "が" },
+            "を": { es: "Partícula de objeto directo", hiragana: "を", kanji: "を" },
+            "の": { es: "Partícula posesiva/de", hiragana: "の", kanji: "の" },
+            "と": { es: "Partícula 'con'/y", hiragana: "と", kanji: "と" },
+            "で": { es: "Partícula de lugar/medio", hiragana: "で", kanji: "で" },
+            "も": { es: "Partícula 'también'", hiragana: "も", kanji: "も" },
+            "へ": { es: "Partícula de dirección", hiragana: "へ", kanji: "へ" },
+            "に": { es: "Partícula de tiempo/lugar", hiragana: "に", kanji: "に" },
+
+        };
+
+        const dialogues = [
+            // --- Bloque A: Saludos y Presentaciones (Fácil) ---
+            { level: 'Facil', title: "Diálogo 1: Presentación (Fisioterapeuta)", lines: [
+                { role: 'Staff', jp: 'おはようございます。お名前は、何ですか？', romaji: 'Ohayō gozaimasu. O-namae wa, nan desu ka?', es: 'Buenos días. ¿Cuál es su nombre?' },
+                { role: 'PT', jp: '私はマヌエル、理学療法士です。', romaji: 'Watashi wa Manueru, rigaku ryōhōshi desu.', es: 'Yo soy Manuel, el fisioterapeuta.' },
+                { role: 'Staff', jp: 'どうぞ、よろしくお願いします。', romaji: 'Dōzo, yoroshiku onegaishimasu.', es: 'Encantado de conocerle (literalmente: por favor, trátame bien).' },
+            ]},
+            { level: 'Facil', title: "Diálogo 2: Identificación de Rol", lines: [
+                { role: 'Athlete', jp: 'すみません、お仕事は何ですか？', romaji: 'Sumimasen, o-shigoto wa nan desu ka?', es: 'Disculpe, ¿cuál es su trabajo?' },
+                { role: 'PT', jp: '私はベネズエラの理学療法士です。', romaji: 'Watashi wa Benezuera no rigaku ryōhōshi desu.', es: 'Yo soy el fisioterapeuta de Venezuela.' },
+                { role: 'Athlete', jp: 'はい、分かります。', romaji: 'Hai, wakarimasu.', es: 'Sí, lo entiendo.' },
+            ]},
+            { level: 'Facil', title: "Diálogo 3: Saludo al Entrenador", lines: [
+                { role: 'PT', jp: 'おはようございます、コーチ。', romaji: 'Ohayō gozaimasu, kōchi.', es: 'Buenos días, entrenador.' },
+                { role: 'Coach', jp: 'おはようございます、先生。今日のスケジュールは？', romaji: 'Ohayō gozaimasu, sensei. Kyō no sukejūru wa?', es: 'Buenos días, Doctor. ¿Cuál es el horario de hoy?' },
+            ]},
+            { level: 'Facil', title: "Diálogo 4: Pidiendo Disculpas/Permiso", lines: [
+                { role: 'PT', jp: 'すみません、水を飲んでもいいですか？', romaji: 'Sumimasen, mizu o nonde mo ii desu ka?', es: 'Disculpe, ¿puedo beber agua?' },
+                { role: 'Staff', jp: 'はい、どうぞ。', romaji: 'Hai, dōzo.', es: 'Sí, adelante.' },
+            ]},
+            
+            // --- Bloque B: Anatomía y Evaluación de Dolor (Medio) ---
+            { level: 'Medio', title: "Diálogo 5: Dolor de Rodilla", lines: [
+                { role: 'PT', jp: 'こんにちは、どこが痛いですか？', romaji: 'Konnichiwa, doko ga itai desu ka?', es: 'Hola, ¿dónde le duele?' },
+                { role: 'Athlete', jp: '膝が痛いです。歩くと痛みが強いです。', romaji: 'Hiza ga itai desu. Aruku to itami ga tsuyoi desu.', es: 'Me duele la rodilla. Cuando camino, el dolor es intenso.' },
+                { role: 'PT', jp: '少し押してみても大丈夫ですか？', romaji: 'Sukoshi oshitemite mo daijōbu desu ka?', es: '¿Está bien si presiono un poco?' },
+            ]},
+            { level: 'Medio', title: "Diálogo 6: Problema en el Hombro", lines: [
+                { role: 'Athlete', jp: '先生、肩の調子が良くないです。', romaji: 'Sensei, kata no chōshi ga yoku nai desu.', es: 'Doctor, la condición de mi hombro no es buena.' },
+                { role: 'PT', jp: 'いつから痛いですか？', romaji: 'Itsu kara itai desu ka?', es: '¿Desde cuándo le duele?' },
+                { role: 'Athlete', jp: '昨日からです。', romaji: 'Kinō kara desu.', es: 'Desde ayer.' },
+            ]},
+            { level: 'Medio', title: "Diálogo 7: Esguince", lines: [
+                { role: 'PT', jp: '捻挫の治療が必要ですか？', romaji: 'Nenza no chiryō ga hitsuyō desu ka?', es: '¿Necesita tratamiento para el esguince?' },
+                { role: 'Athlete', jp: 'はい、お願いします。', romaji: 'Hai, onegai shimasu.', es: 'Sí, por favor.' },
+            ]},
+            { level: 'Medio', title: "Diálogo 8: Evaluación de Dolor (Espalda)", lines: [
+                { role: 'PT', jp: '腰の痛みは悪化していますか？', romaji: 'Koshi no itami wa akka shite imasu ka?', es: '¿Ha empeorado el dolor de la espalda baja?' },
+                { role: 'Athlete', jp: 'いいえ、大丈夫です。', romaji: 'Iie, daijōbu desu.', es: 'No, estoy bien.' },
+            ]},
+            { level: 'Medio', title: "Diálogo 9: Dónde duele exactamente", lines: [
+                { role: 'PT', jp: '痛いところを指してください。', romaji: 'Itai tokoro o yubishite kudasai.', es: 'Por favor, señale dónde le duele.' },
+                { role: 'Athlete', jp: 'ここです。', romaji: 'Koko desu.', es: 'Es aquí.' },
+            ]},
+            { level: 'Medio', title: "Diálogo 10: Fin de la Sesión", lines: [
+                { role: 'PT', jp: '今日の治療は終わりです。お疲れ様でした。', romaji: 'Kyō no chiryō wa owari desu. Otsukare sama deshita.', es: 'El tratamiento de hoy ha terminado. Gracias por su esfuerzo.' },
+                { role: 'Athlete', jp: 'ありがとうございます。', romaji: 'Arigatō gozaimasu.', es: 'Muchas gracias.' },
+            ]},
+
+            // --- Bloque C: Rutinas, Citas y Staff (Medio) ---
+            { level: 'Medio', title: "Diálogo 11: Preguntar por Horario", lines: [
+                { role: 'PT', jp: '今日の練習は何時に始まりますか？', romaji: 'Kyō no renshū wa nanji ni hajimarimasu ka?', es: '¿A qué hora empieza la práctica de hoy?' },
+                { role: 'Coach', jp: '午前9時に始まります。', romaji: 'Gozen ku-ji ni hajimarimasu.', es: 'Empieza a las 9 de la mañana.' },
+                { role: 'PT', jp: '分かります、ありがとうございます。', romaji: 'Wakarimasu, arigatō gozaimasu.', es: 'Entendido, muchas gracias.' },
+            ]},
+            { level: 'Medio', title: "Diálogo 12: Cambio de Cita", lines: [
+                { role: 'Staff', jp: '理学療法の予約を変更したいです。', romaji: 'Rigaku ryōhō no yoyaku o henkō shitai desu.', es: 'Quiero cambiar la cita de fisioterapia.' },
+                { role: 'PT', jp: 'はい、何時に変更しますか？', romaji: 'Hai, nanji ni henkō shimasu ka?', es: 'Sí, ¿a qué hora le gustaría cambiarla?' },
+            ]},
+            { level: 'Medio', title: "Diálogo 13: Ubicación del Vestuario", lines: [
+                { role: 'Athlete', jp: '着替えの場所はどこですか？', romaji: 'Kigae no basho wa doko desu ka?', es: '¿Dónde está el lugar para cambiarse?' },
+                { role: 'PT', jp: 'ここをまっすぐ行って、左です。', romaji: 'Koko o massugu itte, hidari desu.', es: 'Vaya recto por aquí y está a la izquierda.' },
+            ]},
+            { level: 'Medio', title: "Diálogo 14: Práctica Antes o Después", lines: [
+                { role: 'Coach', jp: '練習の前に治療しますか？後にしますか？', romaji: 'Renshū no mae ni chiryō shimasu ka? Ato ni shimasu ka?', es: '¿Hacemos el tratamiento antes de la práctica o después?' },
+                { role: 'PT', jp: '練習の後で、お願いします。', romaji: 'Renshū no ato de, onegai shimasu.', es: 'Después de la práctica, por favor.' },
+            ]},
+            { level: 'Medio', title: "Diálogo 15: Revisando la Condición Diaria", lines: [
+                { role: 'PT', jp: '今日の体調はどうでしたか？', romaji: 'Kyō no taichō wa dō deshita ka?', es: '¿Cómo estuvo su condición física hoy?' },
+                { role: 'Athlete', jp: '良かったです。ありがとうございます。', romaji: 'Yokatta desu. Arigatō gozaimasu.', es: 'Fue buena. Muchas gracias.' },
+            ]},
+            { level: 'Medio', title: "Diálogo 16: Invitación Informal", lines: [
+                { role: 'PT', jp: 'じゃあ、また明日！夕食に一緒に行きませんか？', romaji: 'Jā, mata ashita! Yūshoku ni issho ni ikimasen ka?', es: 'Bueno, ¡hasta mañana! ¿No vamos a cenar juntos?' },
+                { role: 'Staff', jp: 'いいですね！ぜひ。', romaji: 'Ii desu ne! Zehi.', es: '¡Me parece bien! Absolutamente.' },
+            ]},
+
+            // --- Bloque D: Emergencias y Asistencia Crítica (Difícil) ---
+            { level: 'Dificil', title: "Diálogo 17: Pidiendo Ambulancia", lines: [
+                { role: 'Coach', jp: '緊急です！救急車を呼んでください！', romaji: 'Kinkyū desu! Kyūkyūsha o yonde kudasai!', es: '¡Es una emergencia! ¡Por favor, llame a una ambulancia!' },
+                { role: 'PT', jp: '分かります。すぐに。', romaji: 'Wakarimasu. Sugu ni.', es: 'Entendido. Inmediatamente.' },
+            ]},
+            { level: 'Dificil', title: "Diálogo 18: Pérdida de Conciencia", lines: [
+                { role: 'PT', jp: '意識がないです。誰か助けが必要です。', romaji: 'Ishiki ga nai desu. Dareka tasuke ga hitsuyō desu.', es: 'Está inconsciente. Se necesita ayuda de alguien.' },
+                { role: 'Staff', jp: '私が手伝います。', romaji: 'Watashi ga tetsudaimasu.', es: 'Yo ayudaré.' },
+            ]},
+            { level: 'Dificil', title: "Diálogo 19: Necesidad de Reposo Absoluto", lines: [
+                { role: 'PT', jp: 'この選手は安静が必要です。練習はできません。', romaji: 'Kono senshu wa ansei ga hitsuyō desu. Renshū wa dekimasen.', es: 'Este atleta necesita reposo. No puede entrenar.' },
+                { role: 'Coach', jp: '分かります。安静にさせます。', romaji: 'Wakarimasu. Ansei ni sasemasu.', es: 'Entendido. Le haré guardar reposo.' },
+            ]},
+            { level: 'Dificil', title: "Diálogo 20: Confirmando la Emergencia", lines: [
+                { role: 'Staff', jp: '緊急事態は終わりましたか？', romaji: 'Kinkyū jitai wa owarimashita ka?', es: '¿Terminó la situación de emergencia?' },
+                { role: 'PT', jp: 'はい、今は大丈夫です。', romaji: 'Hai, ima wa daijōbu desu.', es: 'Sí, por ahora está bien.' },
+            ]},
+        ];
+
+        // Bloques Temáticos para el Sidenav (20 Diálogos agrupados)
+        const dialogueBlocks = [
+            { title: "Bloque 1: Saludos y Presentaciones (1-4)", range: [0, 3], level: 'Facil' },
+            { title: "Bloque 2: Anatomía y Evaluación de Dolor (5-10)", range: [4, 9], level: 'Medio' },
+            { title: "Bloque 3: Rutinas, Citas y Staff (11-16)", range: [10, 15], level: 'Medio' },
+            { title: "Bloque 4: Emergencias y Asistencia Crítica (17-20)", range: [16, 19], level: 'Dificil' },
+        ];
+
+
+        let currentDialogIndex = 0;
+        let currentLineIndex = -1; // -1 para empezar en el primer paso del diálogo.
+        let currentDifficulty = 'medium'; // Estado inicial: Medio (JP + ES)
+
+        // --- 2. ELEMENTOS DEL DOM ---
+        const app = document.getElementById('app');
+        const dialogTitle = document.getElementById('dialog-title');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const conversationLog = document.getElementById('conversation-log');
+        const nextLineBtn = document.getElementById('next-line-btn');
+        const resetDialogBtn = document.getElementById('reset-dialog-btn');
+        const statusMessage = document.getElementById('status-message');
+        const difficultySelector = document.getElementById('difficulty-selector');
+        
+        // Elementos Sidenav
+        const sidenav = document.getElementById('sidenav');
+        const sidenavContent = document.getElementById('sidenav-content');
+        const openSidenavBtn = document.getElementById('open-sidenav-btn');
+        const closeSidenavBtn = document.getElementById('close-sidenav-btn');
+        const mainContent = document.getElementById('main-content');
+        const initialMessage = document.getElementById('initial-message');
+        
+        // Elementos Footer
+        const typewriterTextElement = document.getElementById('typewriter-text');
+        
+        // --- 3. FUNCIONES DE LÓGICA DE LA APP ---
+        
+        /**
+         * Aplica la clase CSS de color y texto según el nivel de dificultad del diálogo.
+         */
+        function changeLevelStyle(level) {
+            const colorMap = {
+                'Facil': { colorClass: 'facil-color', textClass: 'facil-text', text: 'Nivel: Fácil' },
+                'Medio': { colorClass: 'medio-color', textClass: 'medio-text', text: 'Nivel: Medio' },
+                'Dificil': { colorClass: 'dificil-color', textClass: 'dificil-text', text: 'Nivel: Difícil' },
+            };
+
+            const data = colorMap[level] || colorMap['Facil'];
+            
+            // Limpiar clases
+            app.classList.remove('facil-color', 'medio-color', 'dificil-color');
+            levelDisplay.classList.remove('facil-color', 'medio-color', 'dificil-color', 'facil-text', 'medio-text', 'dificil-text');
+            
+            // Aplicar nuevas clases
+            app.classList.add(data.colorClass);
+            levelDisplay.classList.add(data.colorClass, data.textClass);
+            levelDisplay.textContent = data.text;
+        }
+
+        /**
+         * Inicializa o reinicia un diálogo específico.
+         */
+        function loadDialog(index) {
+            currentDialogIndex = index;
+            currentLineIndex = -1;
+            conversationLog.innerHTML = '';
+            
+            const dialog = dialogues[currentDialogIndex];
+            dialogTitle.textContent = dialog.title;
+            
+            // Aplicar color de nivel
+            changeLevelStyle(dialog.level);
+            
+            if (initialMessage) initialMessage.style.display = 'none';
+            nextLineBtn.disabled = false;
+            
+            updateControls();
+            applyDifficulty(currentDifficulty, true); // Aplicar dificultad al cargar
+        }
+        
+        /**
+         * Muestra la siguiente línea del diálogo con la animación de manga.
+         */
+        function displayNextLine() {
+            const dialog = dialogues[currentDialogIndex];
+            currentLineIndex++;
+
+            if (currentLineIndex < dialog.lines.length) {
+                const line = dialog.lines[currentLineIndex];
+                renderLine(line);
+            }
+            updateControls();
+        }
+
+        /**
+         * Renderiza una línea individual del diálogo.
+         */
+        function renderLine(line) {
+            const isPT = line.role === 'PT' || line.speaker === 'A';
+            
+            const alignClass = isPT ? 'justify-start' : 'justify-end';
+            const bubbleClass = isPT 
+                ? 'bg-blue-100 text-gray-800 border-blue-400' 
+                : 'bg-white text-gray-800 border-gray-300';
+            const roleColor = isPT ? 'text-blue-600' : 'text-green-600';
+            
+            // Aplicar visibilidad inicial basada en la dificultad actual
+            let romajiClass = currentDifficulty === 'medium' || currentDifficulty === 'hard' ? 'hidden' : '';
+            let esClass = currentDifficulty === 'hard' ? 'hidden' : '';
+
+            const speakerLabel = line.role || line.speaker;
+
+            const wordHTML = makeHoverable(line.jp);
+
+            const messageElement = document.createElement('div');
+            messageElement.className = `flex ${alignClass} manga-bubble-animated`;
+            messageElement.innerHTML = `
+                <div class="max-w-xs md:max-w-lg p-3 rounded-xl border-2 ${bubbleClass} shadow-md">
+                    <p class="font-bold ${roleColor} text-sm mb-1">${speakerLabel}</p>
+                    <p class="japanese-text text-xl font-semibold mb-1" style="font-family: 'Noto Sans JP', sans-serif;">${wordHTML}</p>
+                    <p class="text-sm text-gray-600 mb-1 italic line-romaji ${romajiClass}">${line.romaji}</p>
+                    <p class="text-sm text-gray-700 font-medium line-es ${esClass}">${line.es}</p>
+                </div>
+            `;
+            
+            conversationLog.appendChild(messageElement);
+            conversationLog.scrollTop = conversationLog.scrollHeight;
+        }
+        
+        /**
+         * Actualiza el texto y estado de los botones.
+         */
+        function updateControls() {
+            const totalLines = dialogues[currentDialogIndex].lines.length;
+            const dialogNum = currentDialogIndex + 1;
+            const totalDialogs = dialogues.length;
+
+            if (currentLineIndex < totalLines - 1) {
+                nextLineBtn.textContent = `Siguiente Línea (${currentLineIndex + 2}/${totalLines})`;
+                nextLineBtn.disabled = false;
+                statusMessage.textContent = `Practicando Diálogo ${dialogNum} de ${totalDialogs}.`;
+            } else {
+                nextLineBtn.textContent = `Diálogo Completo`;
+                nextLineBtn.disabled = true;
+                statusMessage.textContent = `✅ Diálogo completado (${dialogNum}/${totalDialogs}). Usa el menú para seguir practicando.`;
+            }
+        }
+        
+        /**
+         * Controla la visibilidad de Romaji/Español en las líneas ya mostradas.
+         */
+        function applyDifficulty(difficulty, forceRedraw = false) {
+            currentDifficulty = difficulty;
+            const logItems = conversationLog.querySelectorAll('.line-romaji, .line-es');
+
+            logItems.forEach(element => {
+                element.classList.remove('hidden');
+
+                if (element.classList.contains('line-romaji') && (difficulty === 'medium' || difficulty === 'hard')) {
+                    element.classList.add('hidden');
+                }
+                if (element.classList.contains('line-es') && difficulty === 'hard') {
+                    element.classList.add('hidden');
+                }
+            });
+            
+            if (forceRedraw) {
+                // Si forzamos el redibujo (al cambiar de diálogo), aseguramos que la dificultad esté aplicada.
+                updateControls();
+            }
+        }
+        
+        // --- 4. FUNCIONES DE SIDENAV (MENÚ LATERAL) ---
+        
+        function openSidenav() {
+            sidenav.classList.add('open');
+            mainContent.classList.add('blurry');
+            document.body.style.overflow = 'hidden'; // Evita el scroll del fondo
+        }
+
+        function closeSidenav() {
+            sidenav.classList.remove('open');
+            mainContent.classList.remove('blurry');
+            document.body.style.overflow = 'auto';
+        }
+        
+        /**
+         * Rellena el menú lateral con opciones de diálogo agrupadas.
+         */
+        function populateSidenav() {
+            sidenavContent.innerHTML = ''; 
+
+            dialogueBlocks.forEach(block => {
+                const blockTitle = document.createElement('h4');
+                blockTitle.className = 'font-bold text-lg text-blue-800 mt-4 mb-2 border-b-2 border-blue-200 pb-1';
+                blockTitle.textContent = block.title;
+                sidenavContent.appendChild(blockTitle);
+                
+                for (let i = block.range[0]; i <= block.range[1]; i++) {
+                    if (i < dialogues.length) {
+                        const dialog = dialogues[i];
+                        const dialogLink = document.createElement('div');
+                        dialogLink.className = `sidenav-item p-3 rounded-lg cursor-pointer transition duration-150 text-gray-700 hover:bg-blue-100 hover:text-blue-700`;
+                        dialogLink.innerHTML = `<span class="font-semibold">D${i + 1}:</span> ${dialog.title.split(': ')[1]} <span class="${dialog.level.toLowerCase()}-text text-xs italic ml-2">(${dialog.level})</span>`;
+                        dialogLink.dataset.index = i;
+                        
+                        dialogLink.addEventListener('click', () => {
+                            loadDialog(i);
+                            closeSidenav();
+                        });
+                        
+                        sidenavContent.appendChild(dialogLink);
+                    }
+                }
+            });
+        }
+        
+        // --- 5. FUNCIONES DE TOOLTIP (HOVER) ---
+
+        function showTooltip(element, data) {
+            const content = document.getElementById('tooltip-content');
+            
+            content.innerHTML = `
+                <div class="font-bold text-lg mb-1">${data.es}</div>
+                <div class="text-xs border-t border-gray-600 pt-1 mt-1">
+                    <span class="font-bold text-yellow-300">ひらがな/カタカナ:</span> ${data.hiragana}
+                </div>
+                <div class="text-xs">
+                    <span class="font-bold text-red-300">漢字/Original:</span> ${data.kanji || 'N/A'}
+                </div>
+            `;
+
+            // Obtener la posición de la palabra
+            const rect = element.getBoundingClientRect();
+            
+            // Calcular la posición del tooltip (encima y centrado)
+            const tooltipWidth = 180; // Estimación
+            const tooltipHeight = 100; // Estimación
+            
+            let x = rect.left + rect.width / 2 - tooltipWidth / 2;
+            let y = rect.top - tooltipHeight - 15; // 15px de margen
+            
+            // Ajuste de límites (para que no se salga de la pantalla)
+            if (x < 10) x = 10;
+            if (x + tooltipWidth > window.innerWidth - 10) x = window.innerWidth - tooltipWidth - 10;
+            if (y < 10) y = rect.bottom + 10; // Si no cabe arriba, lo pone abajo
+            
+            tooltip.style.width = `${tooltipWidth}px`;
+            tooltip.style.left = `${x}px`;
+            tooltip.style.top = `${y}px`;
+            
+            tooltip.classList.add('visible');
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('visible');
+        }
+
+        /**
+         * Divide el texto japonés en palabras interactivas (spans) para el hover.
+         * Esta función se basa en que el wordDictionary contiene TODOS los segmentos.
+         */
+        function makeHoverable(japaneseText) {
+            // Unir el vocabulario del diccionario para crear una RegEx. Las frases más largas deben ir primero.
+            const keys = Object.keys(wordDictionary).sort((a, b) => b.length - a.length);
+            
+            // Expresión regular para encontrar las palabras en el diccionario
+            // El regex usa alternancia (|) con las claves ordenadas por longitud (más largas primero)
+            const regex = new RegExp(`(${keys.join('|')})`, 'g');
+            
+            const html = japaneseText.replace(regex, (match) => {
+                const data = wordDictionary[match];
+                if (data) {
+                    // Si encuentra una coincidencia en el diccionario, la envuelve con el span interactivo
+                    const dataString = JSON.stringify(data).replace(/"/g, '&quot;');
+                    return `<span class="japanese-word" 
+                                onmouseover="showTooltip(this, ${dataString})" 
+                                onmouseout="hideTooltip()">
+                                ${match}
+                            </span>`;
+                }
+                // Si por alguna razón el regex coincide pero no está en el diccionario (no debería pasar), 
+                // devuelve el match sin envolver.
+                return match; 
+            });
+
+            return html;
+        }
+        
+        // --- 6. FUNCIÓN DE ANIMACIÓN DE MÁQUINA DE ESCRIBIR EN EL FOOTER ---
+        
+        const footerPhrases = [
+            { text: "学ぼう。", lang: "Japonés" }, // Manabō (Let's learn/a aprender)
+            { text: "Lernen wir.", lang: "Alemán" },
+            { text: "Let's learn.", lang: "Inglés" }
+        ];
+
+        function startTypewriterAnimation() {
+            let phraseIndex = 0;
+            const element = typewriterTextElement;
+
+            function runAnimation() {
+                const currentPhrase = footerPhrases[phraseIndex % footerPhrases.length].text;
+                
+                // 1. Limpiar y establecer nuevo texto
+                element.classList.remove('typewriter-text-container');
+                element.textContent = currentPhrase; 
+
+                // 2. Forzar un reflow (para reiniciar la animación CSS)
+                void element.offsetWidth; 
+
+                // 3. Aplicar la clase de animación
+                element.classList.add('typewriter-text-container');
+                
+                phraseIndex++;
+            }
+
+            // Iniciar la animación y repetirla cada 5 segundos
+            runAnimation(); 
+            setInterval(runAnimation, 5000); 
+        }
+
+        // --- 7. EVENT LISTENERS E INICIALIZACIÓN ---
+
+        // Controladores de Diálogo
+        nextLineBtn.addEventListener('click', displayNextLine);
+        resetDialogBtn.addEventListener('click', () => loadDialog(currentDialogIndex));
+
+        // Controladores Sidenav
+        openSidenavBtn.addEventListener('click', openSidenav);
+        closeSidenavBtn.addEventListener('click', closeSidenav);
+
+        // Manejar cambio de dificultad
+        difficultySelector.addEventListener('change', (event) => {
+            currentDifficulty = event.target.value;
+            // Re-aplicar la dificultad a las líneas ya mostradas
+            applyDifficulty(currentDifficulty);
+        });
+        
+        // Exportar funciones globales (necesarias para los eventos inline de onmouseover)
+        window.showTooltip = showTooltip;
+        window.hideTooltip = hideTooltip;
+
+        // Inicialización
+        window.onload = () => {
+            populateSidenav();
+            startTypewriterAnimation();
+            
+            // Inicializar el estado del botón
+            nextLineBtn.textContent = 'Siguiente Línea';
+            nextLineBtn.disabled = true;
+        };
+
+    </script>
+</body>
+</html>
