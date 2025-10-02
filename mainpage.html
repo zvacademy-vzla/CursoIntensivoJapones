@@ -10,7 +10,8 @@
         /* Estilos personalizados para transiciones suaves y el estado colapsado */
         body {
             font-family: 'Inter', sans-serif;
-            padding-top: 80px; /* Espacio para el header fijo */
+            padding-top: 80px; /* Espacio para el header fijo (h-20 en Tailwind) */
+            padding-bottom: 40px; /* Espacio para el footer fijo */
         }
 
         /* Aplica transición a la barra lateral y al contenido principal */
@@ -31,560 +32,452 @@
         /* Mantiene el padding y el logo visible, pero oculta el texto del título */
         .sidebar-collapsed #sidebar-title {
             opacity: 0;
-            width: 0;
-            overflow: hidden;
             transition: opacity 0.1s;
         }
 
-        /* Ajusta el ancho de la barra lateral al colapsar */
-        .sidebar-collapsed #sidebar {
-            width: 64px; /* Ancho de un icono */
-        }
-
-        /* Ajusta el margen del contenido principal al colapsar */
-        .sidebar-collapsed #main-content-area {
-            margin-left: 64px;
-        }
-
-        /* Estilo para el botón de lecciones actual */
+        /* Estilo para el elemento de lección activa */
         .lesson-active {
-            background-color: #e0e7ff; /* Indigo-100 */
-            color: #4f46e5; /* Indigo-600 */
-            border-radius: 0.5rem;
+            background-color: #f0fdf4; /* Tailwind green-50 */
+            border-left: 4px solid #10b981; /* Tailwind emerald-500 */
+            color: #059669; /* Tailwind emerald-600 */
             font-weight: 600;
         }
 
-        /* Estilo para lecciones deshabilitadas */
-        .lesson-disabled {
-            color: #9ca3af; /* Gray-400 */
-            cursor: not-allowed;
+        /* Estilo para lecciones bloqueadas */
+        .lesson-locked {
+            color: #9ca3af; /* Tailwind gray-400 */
             pointer-events: none;
-        }
-        .lesson-disabled:hover {
-            background-color: transparent !important;
+            cursor: not-allowed;
         }
 
+        /* Estilo del texto rotatorio del footer */
+        #rotating-text {
+            transition: opacity 0.7s ease-in-out;
+        }
 
-        /* Estilos de scrollbar para navegadores basados en WebKit */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        /* Estilos para el sidebar en móvil */
+        @media (max-width: 768px) {
+            #sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar-open #sidebar {
+                transform: translateX(0);
+            }
+            #sidebar {
+                width: 100%;
+                z-index: 1000;
+            }
+            #main-content-area {
+                margin-left: 0 !important;
+            }
         }
-        ::-webkit-scrollbar-thumb {
-            background-color: #d1d5db; /* Gray-300 */
-            border-radius: 10px;
+
+        /* Ajustes para el botón de toggle en el header (para móvil) */
+        #sidebar-toggle-mobile {
+            display: none;
         }
-        ::-webkit-scrollbar-track {
-            background-color: #f3f4f6; /* Gray-100 */
+        @media (max-width: 768px) {
+            #sidebar-toggle-mobile {
+                display: block;
+            }
         }
     </style>
-</head>
-<body class="bg-gray-50 flex flex-col min-h-screen" x-data="{ isSidebarOpen: false }">
-
-    <!-- Script de configuración de Tailwind (solo si se necesita personalizar, sino se puede omitir) -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         'primary': '#4f46e5', // Indigo-600
-                        'primary-light': '#e0e7ff', // Indigo-100
-                    }
+                        'secondary': '#10b981', // Emerald-500
+                    },
                 }
             }
         }
     </script>
+</head>
+<body class="bg-gray-50">
 
-    <!-- Header Fijo (Simulación de Barra Superior) -->
-    <header class="fixed top-0 left-0 w-full bg-white border-b border-gray-200 z-30 shadow-md h-16 flex items-center px-4">
-        <!-- Botón de Menú/Toggle Sidebar -->
-        <button id="sidebar-toggle" onclick="toggleSidebar()" class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition duration-150 ease-in-out mr-4">
-            <!-- Icono de Menú (Hamburgesa) -->
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-        </button>
-        <h1 class="text-xl font-bold text-gray-800">Curso Intensivo de Japonés para el Profesional de la Salud</h1>
-    </header>
+    <!-- Header Fijo con navegación de utilidades para el profesor -->
+    <header id="app-header" class="fixed top-0 left-0 w-full bg-white shadow-xl z-[100] h-20 flex items-center justify-between px-6 border-b border-gray-200">
+        <!-- Título / Branding -->
+        <div class="flex items-center">
+            <!-- Botón de toggle para móvil -->
+            <button id="sidebar-toggle-mobile" class="mr-4 p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+            <h1 class="text-2xl font-extrabold text-primary tracking-tight">
+                Curso Intensivo de Japonés
+            </h1>
+        </div>
 
-    <!-- Contenedor Principal (Sidebar y Contenido) -->
-    <div class="flex flex-1 pt-16" id="app-container">
-        
-        <!-- Sidebar (Menú de Navegación) -->
-        <nav id="sidebar" class="fixed top-16 left-0 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 w-72 p-4 flex flex-col z-20 overflow-y-auto shadow-lg">
+        <!-- Botones de redirección a las plataformas y al Generador de Diálogos -->
+        <div class="flex items-center space-x-3 md:space-x-4">
             
-            <div class="mb-6 pb-4 border-b border-gray-200 flex items-center">
-                <img src="https://placehold.co/32x32/4f46e5/ffffff?text=JP" alt="Logo" class="w-8 h-8 mr-2 rounded-md">
-                <h2 id="sidebar-title" class="text-lg font-semibold text-primary sidebar-text transition-all duration-300 ease-in-out">Contenido del Curso</h2>
-            </div>
+            <!-- NUEVO: Enlace a Generador de Diálogos -->
+            <a href="dialog_generator.html" class="flex items-center px-3 py-2 text-sm font-semibold rounded-full text-gray-700 bg-gray-100 hover:bg-gray-200 transition duration-150 transform hover:scale-[1.03] border border-gray-300">
+                <!-- Icono de AI/Robot -->
+                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 10v2m14-2v2M4 16h16m-4-4h-4m-4 0h-4m12 0v-4m-4 4v4m-4-4v-4m0 4h4m4-4H8m8 0h-4m4 4h-4m4 0v4m0-4v-4m0 0h4m-4 0h4m-4 0H8m8 0h4m-4 0v4"></path></svg>
+                Generador
+            </a>
 
-            <!-- Lista de Lecciones -->
-            <ul id="lesson-list" class="space-y-2 flex-1">
-                <li class="mb-4">
-                    <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider sidebar-text">Lecciones Habilitadas</p>
-                </li>
-                <!-- Lección Introductoria (Habilitada y Completada) -->
-                <li>
-                    <a href="#" onclick="loadLesson('intro', this)" class="lesson-link flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
-                        <span class="text-green-500 font-bold mr-2">✓</span>
-                        <span class="sidebar-text">Introductoria: 日本語の入門 🫂</span>
-                    </a>
-                </li>
-                <!-- Lección 1 (Habilitada y Completada) -->
-                <li>
-                    <a href="#" onclick="loadLesson(1, this)" class="lesson-link flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
-                        <span class="text-green-500 font-bold mr-2">✓</span>
-                        <span class="sidebar-text">Lección 1: Saludos y presentaciones 👋</span>
-                    </a>
-                </li>
-                <!-- Lección 2 (Habilitada y Completada) -->
-                <li>
-                    <a href="#" onclick="loadLesson(2, this)" class="lesson-link flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
-                        <span class="text-green-500 font-bold mr-2">✓</span>
-                        <span class="sidebar-text">Lección 2: Frases esenciales para el día a día 🙏</span>
-                    </a>
-                </li>
-                <!-- Lección 3 (Habilitada y Completada) -->
-                <li>
-                    <a href="#" onclick="loadLesson(3, this)" class="lesson-link flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-lg group">
-                        <span class="text-green-500 font-bold mr-2">✓</span>
-                        <span class="sidebar-text">Lección 3: Anatomía y vocabulario del cuerpo 🦴💪</span>
-                    </a>
-                </li>
-                <!-- Lección 4 (Habilitada y Activa por defecto) -->
-                <li>
-                    <a href="#" onclick="loadLesson(4, this)" class="lesson-link flex items-center p-2 lesson-active group" id="lesson-4-link">
-                        <span class="text-primary mr-2">▶</span>
-                        <span class="sidebar-text">Lección 4: Síntomas y dolor 🤕</span>
-                    </a>
-                </li>
-                
-                <!-- Separador para Herramientas -->
-                <li class="mt-6 mb-4 pt-4 border-t border-gray-200">
-                    <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider sidebar-text">Herramientas de Práctica</p>
-                </li>
+            <!-- Enlace a Duolingo for Schools -->
+            <a href="https://schools.duolingo.com/classroom/8504538/" target="_blank" class="flex items-center px-4 py-2 text-sm font-semibold rounded-full text-white bg-green-500 hover:bg-green-600 transition duration-150 shadow-md transform hover:scale-[1.03]">
+                <!-- Icono de Duolingo -->
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.206 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.794 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.794 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.206 18 16.5 18s-3.332.477-4.5 1.253"></path></svg>
+                Duolingo
+            </a>
+            <!-- Enlace a Google Classroom -->
+            <a href="https://classroom.google.com/c/NzgwNTAwNDE2NjU2?cjc=zhpwyng4" target="_blank" class="hidden md:flex items-center px-4 py-2 text-sm font-semibold rounded-full text-primary bg-indigo-100 hover:bg-indigo-200 transition duration-150 border border-indigo-300 transform hover:scale-[1.03]">
+                <!-- Icono de Google Classroom -->
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M11 2h2v5h-2V2zM11 9h2v5h-2V9zM11 16h2v5h-2v-5zM4 11h5v2H4v-2zM15 11h5v2h-5v-2zM7 4H5v2h2V4zM17 4h-2v2h2V4zM7 18H5v2h2v-2zM17 18h-2v2h2v-2z"></path></svg>
+                Classroom
+            </a>
+        </div>
+    </header>
+    <!-- Fin del Header Fijo -->
 
-                <!-- Botón de Generador de Diálogos (NUEVO) -->
-                <li>
-                    <a href="dialog_generator.html" class="flex items-center p-2 text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg group shadow-md transition duration-150 ease-in-out">
-                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
-                            <path fill-rule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.575l-7.799 4.226a3 3 0 010 3.197l7.8 4.225a3 3 0 11-.825 1.488l-8-4.323a3 3 0 010-4.75l8-4.322a3 3 0 010-1.488z" clip-rule="evenodd" />
-                        </svg>
-                        <span class="sidebar-text font-bold">Generador de Diálogos 🗣️</span>
-                    </a>
-                </li>
-                
-                <!-- Separador y Lecciones Futuras (Deshabilitadas) -->
-                <li class="mt-6 mb-4 pt-4 border-t border-gray-200">
-                    <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider sidebar-text">Próximas Lecciones (Bloqueadas)</p>
-                </li>
-                
-                <!-- Lecciones 5-11 (DESHABILITADAS) -->
-                <li>
-                    <a href="#" class="flex items-center p-2 lesson-disabled rounded-lg group">
-                        <span class="text-gray-400 mr-2">🔒</span>
-                        <span class="sidebar-text">Lección 5: Tratamiento y Procedimientos Médicos 💉🏥</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="flex items-center p-2 lesson-disabled rounded-lg group">
-                        <span class="text-gray-400 mr-2">🔒</span>
-                        <span class="sidebar-text">Lección 6: El Hospital y el Equipo de Trabajo 🧑‍⚕️👩‍⚕️</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="flex items-center p-2 lesson-disabled rounded-lg group">
-                        <span class="text-gray-400 mr-2">🔒</span>
-                        <span class="sidebar-text">Lección 7: Restaurantes y Tiendas 🍣🛍️</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="flex items-center p-2 lesson-disabled rounded-lg group">
-                        <span class="text-gray-400 mr-2">🔒</span>
-                        <span class="sidebar-text">Lección 8: Vivienda y Servicios 🏡💡</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="flex items-center p-2 lesson-disabled rounded-lg group">
-                        <span class="text-gray-400 mr-2">🔒</span>
-                        <span class="sidebar-text">Lección 9: Emergencias y Problemas 🚨🚑</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="flex items-center p-2 lesson-disabled rounded-lg group">
-                        <span class="text-gray-400 mr-2">🔒</span>
-                        <span class="sidebar-text">Lección 10: Conversación Informal y Vida Social 🗣️😊</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="flex items-center p-2 lesson-disabled rounded-lg group">
-                        <span class="text-gray-400 mr-2">🔒</span>
-                        <span class="sidebar-text">Lección 11: Repaso y Práctica de Roles 🗣️✅</span>
-                    </a>
-                </li>
-            </ul>
+    <!-- Sidebar Fija -->
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-72 bg-white shadow-2xl overflow-y-auto z-40 pt-20 flex flex-col">
+        <!-- Logo y Título -->
+        <div class="p-6 pb-4 border-b border-gray-100 flex items-center justify-start space-x-3">
+            <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <h2 id="sidebar-title" class="text-xl font-bold text-gray-900 sidebar-text">Menú del Curso</h2>
+        </div>
 
-            <!-- Información de Firebase/Usuario (Simulado) -->
-            <div id="firebase-info" class="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-500 p-2 transition-all duration-300 ease-in-out sidebar-text">
-                <p class="font-semibold mb-1">Usuario (Simulado):</p>
-                <p class="truncate font-mono">user-profesional-salud-japon-01</p>
-                <p class="mt-2 font-semibold mb-1">ID de la App (Simulado):</p>
-                <p class="truncate font-mono">jp-intensive-course-2024</p>
-                <button onclick="document.getElementById('modal').classList.remove('hidden')" class="mt-3 text-primary hover:text-indigo-800 font-medium">
-                    Detalles de Conexión
-                </button>
-            </div>
+        <!-- Botón de colapso -->
+        <button id="sidebar-toggle" class="absolute top-24 -right-3 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 focus:outline-none z-50 transition duration-300 hidden md:flex">
+            <svg id="toggle-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+        </button>
+        
+        <!-- Lista de Lecciones/Módulos -->
+        <nav class="flex-grow p-4 space-y-2">
+            <!-- Lecciones Habilitadas (1 a 4) -->
+            <a href="#" id="lesson-1-link" class="lesson-link flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="1">
+                <span class="w-6 text-center text-green-500 font-bold mr-3">●</span>
+                <span class="sidebar-text">Lección 1: Saludos y presentaciones 👋</span>
+            </a>
+            <a href="#" id="lesson-2-link" class="lesson-link flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="2">
+                <span class="w-6 text-center text-green-500 font-bold mr-3">●</span>
+                <span class="sidebar-text">Lección 2: Frases esenciales para el día a día 🙏</span>
+            </a>
+            <a href="#" id="lesson-3-link" class="lesson-link flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="3">
+                <span class="w-6 text-center text-green-500 font-bold mr-3">●</span>
+                <span class="sidebar-text">Lección 3: Anatomía y vocabulario del cuerpo 🦴💪</span>
+            </a>
+            <a href="#" id="lesson-4-link" class="lesson-link flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="4">
+                <span class="w-6 text-center text-green-500 font-bold mr-3">●</span>
+                <span class="sidebar-text">Lección 4: Diálogos de Consulta Médica 🗣️</span>
+            </a>
+
+            <!-- Lecciones Bloqueadas (5 a 11) -->
+            <a href="#" class="lesson-link lesson-locked flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="5">
+                <span class="w-6 text-center text-gray-500 font-bold mr-3">❌</span>
+                <span class="sidebar-text">Lección 5: Tratamientos y Medicamentos 💊</span>
+            </a>
+            <a href="#" class="lesson-link lesson-locked flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="6">
+                <span class="w-6 text-center text-gray-500 font-bold mr-3">❌</span>
+                <span class="sidebar-text">Lección 6: Orientación en el Hospital 🏥</span>
+            </a>
+            <a href="#" class="lesson-link lesson-locked flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="7">
+                <span class="w-6 text-center text-gray-500 font-bold mr-3">❌</span>
+                <span class="sidebar-text">Lección 7: Restaurantes y tiendas 🍣🛍️</span>
+            </a>
+            <a href="#" class="lesson-link lesson-locked flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="8">
+                <span class="w-6 text-center text-gray-500 font-bold mr-3">❌</span>
+                <span class="sidebar-text">Lección 8: Vivienda y servicios 🏡💡</span>
+            </a>
+            <a href="#" class="lesson-link lesson-locked flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="9">
+                <span class="w-6 text-center text-gray-500 font-bold mr-3">❌</span>
+                <span class="sidebar-text">Lección 9: Emergencias y problemas 🚨🚑</span>
+            </a>
+            <a href="#" class="lesson-link lesson-locked flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="10">
+                <span class="w-6 text-center text-gray-500 font-bold mr-3">❌</span>
+                <span class="sidebar-text">Lección 10: Conversación informal y vida social 🗣️😊</span>
+            </a>
+            <a href="#" class="lesson-link lesson-locked flex items-center p-3 text-base rounded-lg hover:bg-gray-100" data-lesson-id="11">
+                <span class="w-6 text-center text-gray-500 font-bold mr-3">❌</span>
+                <span class="sidebar-text">Lección 11: Repaso y práctica de roles ✅</span>
+            </a>
         </nav>
 
-        <!-- Área de Contenido Principal -->
-        <main id="main-content-area" class="flex-1 transition-all duration-300 ease-in-out ml-72 p-6">
-            <div class="max-w-4xl mx-auto">
-                <!-- Contenido de la Lección Actual se carga aquí -->
-                <div id="lesson-content">
-                    <!-- Contenido de la Lección 4 cargado por defecto -->
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Modal de Información de Conexión (Simulado) -->
-    <div id="modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden z-40 flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4">
-            <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Detalles de Conexión (Simulación)</h3>
-            
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 mb-1">ID de Usuario (Simulado)</label>
-                <div class="flex items-center space-x-2 bg-gray-100 p-3 rounded-lg border border-gray-300">
-                    <span id="modal-user-id" class="font-mono text-gray-900 flex-1 break-all">user-profesional-salud-japon-01</span>
-                    <button onclick="copyToClipboard('modal-user-id', 'user-feedback')" class="text-indigo-500 hover:text-indigo-700 flex-shrink-0 relative">
-                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                            <path d="M7.5 7.5a3 3 0 100 6h4.5a3 3 0 100-6h-4.5z"/>
-                            <path fill-rule="evenodd" d="M15 2.25H4.5A2.25 2.25 0 002.25 4.5v15A2.25 2.25 0 004.5 21.75h10.5A2.25 2.25 0 0017.25 19.5v-4.69l3.56-3.56a1.5 1.5 0 000-2.12l-3.56-3.56V2.25zM17.25 12h-4.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5z" clip-rule="evenodd"/>
-                        </svg>
-                        <span id="user-feedback" class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-green-600 opacity-0 transition-opacity duration-300">Copiado</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="mb-6">
-                <label class="block text-sm font-semibold text-gray-700 mb-1">Contraseña (Simulada)</label>
-                <div class="flex items-center space-x-2 bg-gray-100 p-3 rounded-lg border border-gray-300">
-                    <span id="modal-password" class="font-mono text-gray-900 flex-1 break-all">********** (Token no visible)</span>
-                    <button onclick="copyToClipboard('modal-password', 'pass-feedback')" class="text-indigo-500 hover:text-indigo-700 flex-shrink-0 relative">
-                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                            <path d="M7.5 7.5a3 3 0 100 6h4.5a3 3 0 100-6h-4.5z"/>
-                            <path fill-rule="evenodd" d="M15 2.25H4.5A2.25 2.25 0 002.25 4.5v15A2.25 2.25 0 004.5 21.75h10.5A2.25 2.25 0 0017.25 19.5v-4.69l3.56-3.56a1.5 1.5 0 000-2.12l-3.56-3.56V2.25zM17.25 12h-4.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5z" clip-rule="evenodd"/>
-                        </svg>
-                        <span id="pass-feedback" class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-green-600 opacity-0 transition-opacity duration-300">Copiado</span>
-                    </button>
-                </div>
-            </div>
-
-            <button onclick="document.getElementById('modal').classList.add('hidden')" class="w-full bg-primary text-white p-3 rounded-lg font-bold hover:bg-indigo-700 transition duration-150 ease-in-out shadow-lg">
-                Cerrar
-            </button>
+        <!-- Información de Firebase (Conservado del original) -->
+        <div id="firebase-info" class="p-6 border-t border-gray-100 mt-auto">
+            <p class="text-sm font-semibold text-gray-700">ID del Usuario (Demo):</p>
+            <p id="user-id" class="text-xs text-gray-500 break-all">user-dummy-1234567890</p>
+            <p class="text-sm font-semibold text-gray-700 mt-2">Estado:</p>
+            <p class="text-xs text-green-500 font-mono">Conectado (offline mode)</p>
         </div>
-    </div>
+    </aside>
+
+    <!-- Contenido Principal -->
+    <main id="main-content-area" class="p-4 md:p-8 min-h-screen">
+        <div id="lesson-content" class="bg-white p-6 md:p-10 rounded-xl shadow-lg transition-all duration-300 min-h-[calc(100vh-140px)]">
+            <!-- El contenido de la lección cargada se insertará aquí -->
+            <h2 class="text-3xl font-bold text-gray-900 mb-6">Cargando Lección...</h2>
+            <div class="animate-pulse space-y-4">
+                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div class="h-4 bg-gray-200 rounded"></div>
+                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+            </div>
+        </div>
+    </main>
+    <!-- Fin del Contenido Principal -->
+
+    <!-- Footer Intermitente con Botones de Instagram -->
+    <footer class="fixed bottom-0 left-0 w-full bg-gray-800 text-white p-3 text-sm z-50">
+        <div class="flex items-center justify-between max-w-7xl mx-auto">
+            <!-- Botón Izquierdo: ZV Academy -->
+            <a href="https://www.instagram.com/zvacademy_vzla" target="_blank" title="Instagram ZV Academy" class="p-2 rounded-full bg-pink-600 hover:bg-pink-700 transition duration-150 transform hover:scale-110 flex items-center justify-center">
+                <!-- Icono de Instagram -->
+                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.195 2.651c.328 0 .584.004.81.011.666.017 1.134.148 1.542.316.41.17.766.412 1.09.736.324.324.566.68.736 1.09.168.408.299.876.316 1.542.007.226.011.482.011.81v6.234c0 .328-.004.584-.011.81-.017.666-.148 1.134-.316 1.542-.17.41-.412.766-.736 1.09-.324.324-.68.566-1.09.736-.408.168-.876.299-1.542.316-.226.007-.482.011-.81.011H7.805c-.328 0-.584-.004-.81-.011-.666-.017-1.134-.148-1.542-.316-.41-.17-.766-.412-1.09-.736-.324-.324-.68-.566-1.09-.736-.168-.408-.299-.876-.316-1.542-.007-.226-.011-.482-.011-.81V7.805c0-.328.004-.584.011-.81.017-.666.148-1.134.316-1.542.17-.41.412-.766.736-1.09.324-.324.68-.566 1.09-.736.408-.168.876-.299 1.542-.316.226-.007.482-.011.81-.011h6.234zm0 2H7.805c-.27 0-.46.002-.676.01-.58.016-.948.131-1.258.26-.31.13-.57.29-.806.526-.236.236-.396.496-.526.806-.13.31-.244.678-.26 1.258-.008.216-.01.406-.01.676v6.234c0 .27.002.46.01.676.016.58.131.948.26 1.258.13.31.29.57.526.806.236.236.496.396.806.526.31.13.678.244 1.258.26.216.008.406.01.676.01h6.234c.27 0 .46-.002.676-.01.58-.016.948-.131 1.258-.26.31-.13.57-.29.806-.526.236-.236.396-.496.526-.806.13-.31.244-.678.26-1.258.008-.216.01-.406.01-.676V7.805c0-.27-.002-.46-.01-.676-.016-.58-.131-.948-.26-1.258-.13-.31-.29-.57-.526-.806-.236-.236-.496-.396-.806-.526-.31-.13-.678-.244-1.258-.26-.216-.008-.406-.01-.676-.01H7.805zM12 7.788c-2.32 0-4.212 1.892-4.212 4.212s1.892 4.212 4.212 4.212 4.212-1.892 4.212-4.212-1.892-4.212-4.212-4.212zm0 2c1.218 0 2.212.994 2.212 2.212s-.994 2.212-2.212 2.212-2.212-.994-2.212-2.212 2.212-2.212 2.212-2.212zm4.195-2.212a.965.965 0 100 1.93.965.965 0 000-1.93z"></path></svg>
+            </a>
+            
+            <!-- Texto Rotatorio (Centrado) -->
+            <div id="rotating-text" class="flex-grow text-center mx-4 transition-opacity duration-700 ease-in-out"></div>
+
+            <!-- Botón Derecho: Fundación Sugawara -->
+            <a href="https://www.instagram.com/fundacionsugawara" target="_blank" title="Instagram Fundación Sugawara" class="p-2 rounded-full bg-pink-600 hover:bg-pink-700 transition duration-150 transform hover:scale-110 flex items-center justify-center">
+                <!-- Icono de Instagram -->
+                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.195 2.651c.328 0 .584.004.81.011.666.017 1.134.148 1.542.316.41.17.766.412 1.09.736.324.324.566.68.736 1.09.168.408.299.876.316 1.542.007.226.011.482.011.81v6.234c0 .328-.004.584-.011.81-.017.666-.148 1.134-.316 1.542-.17.41-.412.766-.736 1.09-.324.324-.68.566-1.09.736-.408.168-.876.299-1.542.316-.226.007-.482.011-.81.011H7.805c-.328 0-.584-.004-.81-.011-.666-.017-1.134-.148-1.542-.316-.41-.17-.766-.412-1.09-.736-.324-.324-.68-.566-1.09-.736-.168-.408-.299-.876-.316-1.542-.007-.226-.011-.482-.011-.81V7.805c0-.328.004-.584.011-.81.017-.666.148-1.134.316-1.542.17-.41.412-.766.736-1.09.324-.324.68-.566 1.09-.736.408-.168.876-.299 1.542-.316.226-.007.482-.011.81-.011h6.234zm0 2H7.805c-.27 0-.46.002-.676.01-.58.016-.948.131-1.258.26-.31.13-.57.29-.806.526-.236.236-.396.496-.526.806-.13.31-.244.678-.26 1.258-.008.216-.01.406-.01.676v6.234c0 .27.002.46.01.676.016.58.131.948.26 1.258.13.31.29.57.526.806.236.236.496.396.806.526.31.13.678.244 1.258.26.216.008.406.01.676.01h6.234c.27 0 .46-.002.676-.01.58-.016.948-.131 1.258-.26.31-.13.57-.29.806-.526.236-.236.396-.496.526-.806.13-.31.244-.678.26-1.258.008-.216.01-.406.01-.676V7.805c0-.27-.002-.46-.01-.676-.016-.58-.131-.948-.26-1.258-.13-.31-.29-.57-.526-.806-.236-.236-.496-.396-.806-.526-.31-.13-.678-.244-1.258-.26-.216-.008-.406-.01-.676-.01H7.805zM12 7.788c-2.32 0-4.212 1.892-4.212 4.212s1.892 4.212 4.212 4.212 4.212-1.892 4.212-4.212-1.892-4.212-4.212-4.212zm0 2c1.218 0 2.212.994 2.212 2.212s-.994 2.212-2.212 2.212-2.212-.994-2.212-2.212 2.212-2.212 2.212-2.212zm4.195-2.212a.965.965 0 100 1.93.965.965 0 000-1.93z"></path></svg>
+            </a>
+        </div>
+    </footer>
+    <!-- Fin del Footer Intermitente con Botones de Instagram -->
 
     <script>
-        // Función para cambiar el estado de la barra lateral (colapsar/expandir)
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('main-content-area');
-            const body = document.body;
-
-            body.classList.toggle('sidebar-collapsed');
-
-            if (body.classList.contains('sidebar-collapsed')) {
-                // Estado colapsado
-                mainContent.style.marginLeft = '64px';
-            } else {
-                // Estado expandido
-                mainContent.style.marginLeft = '288px'; // 72 * 4 (clase w-72)
-            }
-        }
-
-        // Función para copiar al portapapeles (usando document.execCommand para compatibilidad en iFrames)
-        function copyToClipboard(elementId, feedbackId) {
-            const element = document.getElementById(elementId);
-            let textToCopy;
-            
-            // Si es la contraseña, solo copiamos el texto visible simulado
-            if (elementId === 'modal-password') {
-                textToCopy = '********** (Token no visible)'; 
-            } else {
-                textToCopy = element.textContent;
-            }
-
-            // Crear un área de texto temporal para la copia
-            const tempInput = document.createElement('textarea');
-            tempInput.value = textToCopy;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    // Mostrar feedback de copiado
-                    const feedback = document.getElementById(feedbackId);
-                    feedback.classList.remove('opacity-0');
-                    feedback.classList.add('opacity-100');
-                    setTimeout(() => {
-                        feedback.classList.remove('opacity-100');
-                        feedback.classList.add('opacity-0');
-                    }, 1500);
-                }
-            } catch (err) {
-                console.error('No se pudo copiar el texto: ', err);
-            }
-            
-            document.body.removeChild(tempInput);
-        }
-
-        // --- NAVEGACIÓN DE LECCIONES (IMPLEMENTACIÓN) ---
-
-        // Contenido de las lecciones en HTML (usando template literals)
-        const lessonContent = {
-            'intro': `
-                <h1 class="text-3xl font-extrabold text-gray-900 mb-4">Lección Introductoria: 日本語の入門 🫂</h1>
-                <p class="text-lg text-gray-600 mb-6">Objetivo: Presentar conceptos básicos del idioma y bosquejo cultural de Japón.</p>
-
-                <div class="space-y-8">
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-2xl font-bold text-primary mb-4">1. Generalidades Culturales y Escritura</h2>
-                        <p class="text-gray-700 mb-3">Japón utiliza tres sistemas de escritura: **Hiragana** (para palabras nativas), **Katakana** (para palabras extranjeras y énfasis) y **Kanji** (caracteres chinos).</p>
-                        <ul class="list-disc list-inside space-y-2 text-gray-700">
-                            <li>**Hiragana:** Se usa para gramática y palabras japonesas. Ejemplo: こんにちは (*Konnichiwa*).</li>
-                            <li>**Katakana:** Esencial para términos médicos o nombres extranjeros. Ejemplo: クリニック (*Kurinikku* - Clínica).</li>
-                            <li>**Primeros Kanjis:** 日本 (*Nihon* - Japón), 語 (*go* - idioma), 私 (*Watashi* - yo).</li>
-                        </ul>
-                    </div>
-                </div>
-            `,
-            '1': `
-                <h1 class="text-3xl font-extrabold text-gray-900 mb-4">Lección 1: Saludos y presentaciones 👋</h1>
-                <p class="text-lg text-gray-600 mb-6">Objetivo: Saber presentarse y establecer un primer contacto formal en un entorno profesional.</p>
-
-                <div class="space-y-8">
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-2xl font-bold text-primary mb-4">1. Saludos Clave</h2>
-                        <ul class="space-y-3">
-                            <li class="p-3 bg-gray-50 rounded-lg"><span class="font-mono font-semibold">おはようございます</span> (*Ohayō gozaimasu*) — Buenos días (Formal).</li>
-                            <li class="p-3 bg-gray-50 rounded-lg"><span class="font-mono font-semibold">こんにちは</span> (*Konnichiwa*) — Buenas tardes/Hola.</li>
-                            <li class="p-3 bg-gray-50 rounded-lg"><span class="font-mono font-semibold">こんばんは</span> (*Konbanwa*) — Buenas noches.</li>
-                        </ul>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-2xl font-bold text-primary mb-4">2. Presentación Profesional</h2>
-                        <p class="font-mono text-sm text-gray-800 p-2 bg-primary-light rounded-lg">
-                            **私は 理学療法士 です。** <br>
-                            *(Watashi wa rigaku ryōhōshi desu.)* — Yo soy fisioterapeuta.
-                        </p>
-                    </div>
-                </div>
-            `,
-            '2': `
-                <h1 class="text-3xl font-extrabold text-gray-900 mb-4">Lección 2: Frases esenciales para el día a día 🙏</h1>
-                <p class="text-lg text-gray-600 mb-6">Objetivo: Manejar situaciones comunes y pedir ayuda/permiso.</p>
+        // --- DATA DE LECCIONES ---
+        const lessonData = {
+            'lesson-1': `
+                <h2 class="text-4xl font-extrabold text-primary mb-6 border-b pb-2">Lección 1: Saludos y presentaciones 👋</h2>
+                <p class="text-lg text-gray-700 mb-8">Objetivo: Saber presentarse y establecer un primer contacto en un entorno profesional o social japonés.</p>
                 
-                <div class="space-y-8">
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-2xl font-bold text-primary mb-4">1. Cortesía y Agradecimiento</h2>
-                        <ul class="space-y-3">
-                            <li class="p-3 bg-gray-50 rounded-lg"><span class="font-mono font-semibold">ありがとうございます</span> (*Arigatō gozaimasu*) — Muchas gracias.</li>
-                            <li class="p-3 bg-gray-50 rounded-lg"><span class="font-mono font-semibold">お願いします</span> (*Onegai shimasu*) — Por favor (al pedir algo o un favor).</li>
-                            <li class="p-3 bg-gray-50 rounded-lg"><span class="font-mono font-semibold">ごめんなさい</span> (*Gomen nasai*) — Lo siento/Disculpe.</li>
-                        </ul>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-2xl font-bold text-primary mb-4">2. Pedir Ubicación</h2>
-                        <p class="font-mono text-sm text-gray-800 p-2 bg-primary-light rounded-lg">
-                            **トイレ は どこですか**？ <br>
-                            *(Toire wa doko desu ka?)* — ¿Dónde está el baño?
-                        </p>
-                    </div>
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">Frases Clave</h3>
+                <div class="bg-gray-100 p-4 rounded-lg shadow-inner space-y-3 mb-8">
+                    <p class="font-mono text-sm text-green-700">Buenos días/tardes: おはようございます (Ohayō gozaimasu) / こんにちは (Konnichiwa)</p>
+                    <p class="font-mono text-sm text-indigo-700">Mi nombre es [X]: わたしの なまえは [X] です。 (Watashi no namae wa [X] desu.)</p>
+                    <p class="font-mono text-sm text-green-700">Soy fisioterapeuta: わたしは りょうほうし です。 (Watashi wa rigaku ryōhōshi desu.)</p>
                 </div>
+
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">Práctica</h3>
+                <p class="text-base text-gray-600 mb-6">Graba tu propia presentación usando las frases de arriba. ¡Asegúrate de practicar el acento!</p>
             `,
-            '3': `
-                <h1 class="text-3xl font-extrabold text-gray-900 mb-4">Lección 3: Anatomía y vocabulario del cuerpo 🦴💪</h1>
-                <p class="text-lg text-gray-600 mb-6">Objetivo: Nombrar y señalar partes del cuerpo para la evaluación física.</p>
-
-                <div class="space-y-8">
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-2xl font-bold text-primary mb-4">1. Partes Clave del Cuerpo</h2>
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <tr><td class="px-6 py-4 whitespace-nowrap">頭</td><td>**Atama**</td><td>Cabeza</td></tr>
-                                <tr><td class="px-6 py-4 whitespace-nowrap">腕</td><td>**Ude**</td><td>Brazo</td></tr>
-                                <tr><td class="px-6 py-4 whitespace-nowrap">足</td><td>**Ashi**</td><td>Pierna/Pie</td></tr>
-                                <tr><td class="px-6 py-4 whitespace-nowrap">背中</td><td>**Senaka**</td><td>Espalda</td></tr>
-                                <tr><td class="px-6 py-4 whitespace-nowrap">膝</td><td>**Hiza**</td><td>Rodilla</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-2xl font-bold text-primary mb-4">2. Instrucciones para la Evaluación</h2>
-                        <p class="font-mono text-sm text-gray-800 p-2 bg-primary-light rounded-lg">
-                            **動かして ください。** <br>
-                            *(Ugokashite kudasai.)* — Por favor, muévalo.
-                        </p>
-                    </div>
-                    
-                    <!-- Botón de Redirección para Lección 3 -->
-                    <a href="kaibougaku.html" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl shadow-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m-7.5 4.5l6-6-6-6V2.25M17.25 12h3.75m-7.5 4.5l6-6-6-6V2.25" />
-                        </svg>
-                        Ver Atlas de Anatomía (Kaibougaku)
-                    </a>
-                    
+            'lesson-2': `
+                <h2 class="text-4xl font-extrabold text-primary mb-6 border-b pb-2">Lección 2: Frases esenciales para el día a día 🙏</h2>
+                <p class="text-lg text-gray-700 mb-8">Objetivo: Manejar situaciones comunes, pedir ayuda y expresar gratitud o disculpa de manera correcta.</p>
+                
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">Vocabulario de cortesía</h3>
+                <div class="bg-gray-100 p-4 rounded-lg shadow-inner space-y-3 mb-8">
+                    <p class="font-mono text-sm text-green-700">Gracias: ありがとうございます (Arigatō gozaimasu)</p>
+                    <p class="font-mono text-sm text-indigo-700">Por favor/Deme esto: おねがいします (Onegai shimasu)</p>
+                    <p class="font-mono text-sm text-green-700">Disculpe/Lo siento: ごめんなさい (Gomen nasai) / すみません (Sumimasen)</p>
                 </div>
+                
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">Cómo pedir ayuda/direcciones</h3>
+                <p class="text-base text-gray-600 mb-6">¿Dónde está el baño? (トイレはどこですか？ - Toire wa doko desu ka?)</p>
             `,
-            '4': `
-                <h1 class="text-3xl font-extrabold text-gray-900 mb-4">Lección 4: Síntomas y dolor 🤕</h1>
-                <p class="text-lg text-gray-600 mb-6">Objetivo: Describir el dolor, la intensidad y la ubicación de los síntomas del paciente.</p>
-
-                <div class="space-y-8">
-                    
-                    <!-- Vocabulario Esencial (Ejemplo de Lección 4) -->
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-2xl font-bold text-primary mb-4 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-18 0V4.755A2.25 2.25 0 015.25 2.5h13.5a2.25 2.25 0 012.25 2.25V16.5" />
-                            </svg>
-                            1. Vocabulario Esencial: Descripción del Dolor
-                        </h2>
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Japonés</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Romaji</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Español</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <tr><td class="px-6 py-4 whitespace-nowrap">痛い</td><td>**itai**</td><td>Doloroso</td></tr>
-                                <tr><td class="px-6 py-4 whitespace-nowrap">どこ</td><td>**doko**</td><td>Dónde</td></tr>
-                                <tr><td class="px-6 py-4 whitespace-nowrap">ズキズキ</td><td>**zukizuki**</td><td>Dolor punzante/pulsante</td></tr>
-                                <tr><td class="px-6 py-4 whitespace-nowrap">しびれる</td><td>**shibireru**</td><td>Estar entumecido</td></tr>
-                                <tr><td class="px-6 py-4 whitespace-nowrap">いつから</td><td>**itsukara**</td><td>Desde cuándo</td></tr>
-                                <tr><td class="px-6 py-4 whitespace-nowrap">安静時</td><td>**anseiji**</td><td>En reposo</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Gramática Clave (Ejemplo de Lección 4) -->
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-2xl font-bold text-primary mb-4 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12a.75.75 0 110-1.5.75.75 0 010 1.5zM12 17.25a.75.75 0 110-1.5.75.75 0 010 1.5z" />
-                            </svg>
-                            2. Gramática Clave: Ubicación y Duración
-                        </h2>
-
-                        <!-- Preguntar Dónde Duele -->
-                        <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">A. Preguntar Ubicación (どこが 痛いですか？)</h3>
-                        <p class="text-gray-700 mb-2">Preguntar al paciente exactamente dónde siente la dolencia.</p>
-                        <div class="bg-primary-light p-3 rounded-lg border-l-4 border-primary">
-                            <p class="font-mono text-sm text-gray-800">**どこが 痛いですか**？</p>
-                            <p class="text-xs text-gray-600 mt-1">**(Doko ga itai desu ka?)** - ¿Dónde le duele?</p>
-                        </div>
-
-                        <!-- Preguntar Duración -->
-                        <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">B. Preguntar Duración (いつから ですか？)</h3>
-                        <p class="text-gray-700 mb-2">Preguntar el inicio de la dolencia.</p>
-                        <div class="bg-primary-light p-3 rounded-lg border-l-4 border-primary">
-                            <p class="font-mono text-sm text-gray-800">**いつから** 痛いですか？</p>
-                            <p class="text-xs text-gray-600 mt-1">**(Itsukara itai desu ka?)** - ¿Desde cuándo le duele?</p>
-                        </div>
-                    </div>
-
-                    <!-- Frases Prácticas (Ejemplo de Lección 4) -->
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-2xl font-bold text-primary mb-4 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9 6H2.25M3 12l2.25-2.25M5.25 12L3 14.25" />
-                            </svg>
-                            3. Frases Clave en la Práctica
-                        </h2>
-                        <ul class="space-y-4">
-                            <li class="p-3 bg-gray-50 rounded-lg">
-                                <p class="font-mono text-sm text-gray-800">「この ボードは **しびれますか**？」</p>
-                                <p class="text-xs text-gray-600 mt-1">*(Kono bōdo wa **shibiremasu ka**?)* — "¿Esta parte **está entumecida**?"</p>
-                            </li>
-                            <li class="p-3 bg-gray-50 rounded-lg">
-                                <p class="font-mono text-sm text-gray-800">「少し **ズキズキ** します。」</p>
-                                <p class="text-xs text-gray-600 mt-1">*(Sukoshi **zukizuki** shimasu.)* — "Me **punza** un poco."</p>
-                            </li>
-                            <li class="p-3 bg-gray-50 rounded-lg">
-                                <p class="font-mono text-sm text-gray-800">「**動いた時** が 一番 痛いですか？」</p>
-                                <p class="text-xs text-gray-600 mt-1">*(**Ugoita toki** ga ichiban itai desu ka?)* — "¿Le duele más **al moverse**?"</p>
-                            </li>
-                        </ul>
-                    </div>
-                    
-                    <!-- Botón de Redirección para Lección 4 -->
-                    <a href="vocab.html" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl shadow-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out mt-8">
-                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-2">
-                           <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0l2.155 2.155m-7.697 1.29l2.155 2.155m-3.79 3.79l2.155 2.155m-3.79 3.79l2.155 2.155"/>
-                         </svg>
-                        Ver Glosario de Síntomas (Vocab. Esencial)
-                    </a>
-                    
+            'lesson-3': `
+                <h2 class="text-4xl font-extrabold text-primary mb-6 border-b pb-2">Lección 3: Anatomía y vocabulario del cuerpo 🦴💪</h2>
+                <p class="text-lg text-gray-700 mb-8">Objetivo: Conocer el vocabulario esencial de las partes del cuerpo y la anatomía para comunicarse con pacientes y colegas.</p>
+                
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">Términos Clave</h3>
+                <div class="bg-gray-100 p-4 rounded-lg shadow-inner space-y-3 mb-8">
+                    <p class="font-mono text-sm text-green-700">Cabeza: あたま (Atama)</p>
+                    <p class="font-mono text-sm text-indigo-700">Espalda: せなか (Senaka)</p>
+                    <p class="font-mono text-sm text-green-700">Hueso: ほね (Hone)</p>
+                    <p class="font-mono text-sm text-indigo-700">Músculo: きんにく (Kin'niku)</p>
                 </div>
-            `
+
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">Recursos Adicionales</h3>
+                <p class="text-base text-gray-600 mb-6">Accede a un recurso visual interactivo para reforzar tu vocabulario de anatomía.</p>
+
+                <!-- Botón de Redirección a kaibougaku.html -->
+                <a href="kaibougaku.html" class="inline-block px-6 py-3 bg-secondary text-white font-bold rounded-lg hover:bg-emerald-600 transition duration-300 shadow-md">
+                    Ir a Vocabulario Anatómico (Kaibougaku)
+                </a>
+            `,
+            'lesson-4': `
+                <h2 class="text-4xl font-extrabold text-primary mb-6 border-b pb-2">Lección 4: Diálogos de Consulta Médica 🗣️</h2>
+                <p class="text-lg text-gray-700 mb-8">Objetivo: Practicar conversaciones sobre síntomas, localización del dolor y duración de la enfermedad.</p>
+                
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">Escenario: Descripción del Dolor</h3>
+                <div class="bg-gray-100 p-4 rounded-lg shadow-inner space-y-3 mb-8">
+                    <p class="font-mono text-sm text-green-700">¿Dónde le duele?: どこが いたいですか？ (Doko ga itai desu ka?)</p>
+                    <p class="font-mono text-sm text-indigo-700">Me duele la rodilla: ひざが いたい です。 (Hiza ga itai desu.)</p>
+                    <p class="font-mono text-sm text-green-700">¿Desde cuándo?: いつからですか？ (Itsu kara desu ka?)</p>
+                </div>
+
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">Recursos Adicionales</h3>
+                <p class="text-base text-gray-600 mb-6">Utiliza nuestra herramienta interactiva para practicar el vocabulario médico específico.</p>
+                
+                <!-- Botón de Redirección a vocab.html -->
+                <a href="vocab.html" class="inline-block px-6 py-3 bg-secondary text-white font-bold rounded-lg hover:bg-emerald-600 transition duration-300 shadow-md">
+                    Ir a Herramienta de Vocabulario (Vocab)
+                </a>
+            `,
+            'lesson-5': `<h2 class="text-4xl font-extrabold text-red-500 mb-6">Lección 5 Bloqueada ❌</h2><p class="text-lg text-gray-700">Lección 5: Tratamientos y Medicamentos. Debes completar las lecciones anteriores para acceder a este contenido.</p>`,
+            'lesson-6': `<h2 class="text-4xl font-extrabold text-red-500 mb-6">Lección 6 Bloqueada ❌</h2><p class="text-lg text-gray-700">Lección 6: Orientación en el Hospital. Debes completar las lecciones anteriores para acceder a este contenido.</p>`,
+            'lesson-7': `<h2 class="text-4xl font-extrabold text-red-500 mb-6">Lección 7 Bloqueada ❌</h2><p class="text-lg text-gray-700">Lección 7: Restaurantes y tiendas. Debes completar las lecciones anteriores para acceder a este contenido.</p>`,
+            'lesson-8': `<h2 class="text-4xl font-extrabold text-red-500 mb-6">Lección 8 Bloqueada ❌</h2><p class="text-lg text-gray-700">Lección 8: Vivienda y servicios. Debes completar las lecciones anteriores para acceder a este contenido.</p>`,
+            'lesson-9': `<h2 class="text-4xl font-extrabold text-red-500 mb-6">Lección 9 Bloqueada ❌</h2><p class="text-lg text-gray-700">Lección 9: Emergencias y problemas. Debes completar las lecciones anteriores para acceder a este contenido.</p>
+                <p class="text-sm text-gray-500 mt-4">Contenido: Pedir ayuda en situaciones críticas. Llamar a una ambulancia.</p>`,
+            'lesson-10': `<h2 class="text-4xl font-extrabold text-red-500 mb-6">Lección 10 Bloqueada ❌</h2><p class="text-lg text-gray-700">Lección 10: Conversación informal y vida social. Debes completar las lecciones anteriores para acceder a este contenido.</p>`,
+            'lesson-11': `<h2 class="text-4xl font-extrabold text-red-500 mb-6">Lección 11 Bloqueada ❌</h2><p class="text-lg text-gray-700">Lección 11: Repaso y práctica de roles. Debes completar las lecciones anteriores para acceder a este contenido.</p>`,
         };
 
-        let currentLesson = 4; // Inicializamos con la lección activa por defecto
+        // --- FUNCIONALIDAD DEL SIDEBAR ---
 
-        // Función principal para cargar el contenido de la lección
-        function loadLesson(lessonKey, clickedElement = null) {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content-area');
+        const toggleButton = document.getElementById('sidebar-toggle');
+        const toggleIcon = document.getElementById('toggle-icon');
+        const toggleButtonMobile = document.getElementById('sidebar-toggle-mobile');
+        let isCollapsed = false;
+
+        function toggleSidebar() {
+            if (isCollapsed) {
+                // Expandir
+                document.body.classList.remove('sidebar-collapsed');
+                sidebar.style.width = '288px'; // w-72
+                // Usar media query para el margen en escritorio
+                if (window.innerWidth >= 768) {
+                    mainContent.style.marginLeft = '288px';
+                }
+                toggleIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>`; // Flechas hacia la izquierda
+            } else {
+                // Colapsar
+                document.body.classList.add('sidebar-collapsed');
+                sidebar.style.width = '80px'; // w-20 (aproximadamente, se ajusta con CSS)
+                // Usar media query para el margen en escritorio
+                if (window.innerWidth >= 768) {
+                    mainContent.style.marginLeft = '80px';
+                }
+                toggleIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>`; // Flechas hacia la derecha
+            }
+            isCollapsed = !isCollapsed;
+        }
+
+        // Manejador para el botón de escritorio
+        toggleButton.addEventListener('click', toggleSidebar);
+
+        // Manejador para el botón de móvil
+        toggleButtonMobile.addEventListener('click', () => {
+            document.body.classList.toggle('sidebar-open');
+        });
+
+        // Cierra la sidebar en móvil al hacer clic en un enlace de lección
+        document.querySelectorAll('.lesson-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    document.body.classList.remove('sidebar-open');
+                }
+            });
+        });
+
+        // Manejador de eventos para los enlaces de lección
+        document.querySelectorAll('.lesson-link').forEach(link => {
+            // Previene el comportamiento por defecto de los enlaces
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const lessonId = parseInt(e.currentTarget.getAttribute('data-lesson-id'));
+                // Verificar si la lección está bloqueada
+                if (!e.currentTarget.classList.contains('lesson-locked')) {
+                    loadLesson(lessonId, e.currentTarget);
+                } else {
+                     // Si está bloqueada, carga el contenido de "lección bloqueada" para mostrar el mensaje
+                    loadLesson(lessonId, null);
+                }
+            });
+        });
+
+        /**
+         * Carga el contenido de una lección en el área principal.
+         * @param {number} lessonId - El ID numérico de la lección a cargar.
+         * @param {HTMLElement | null} clickedElement - El elemento del enlace que fue clicado (o null si fue bloqueado).
+         */
+        function loadLesson(lessonId, clickedElement) {
+            const lessonKey = `lesson-${lessonId}`;
             const contentArea = document.getElementById('lesson-content');
-            
-            // 1. Obtener el contenido
-            const content = lessonContent[lessonKey];
 
-            if (content) {
-                // 2. Cargar el nuevo contenido
-                contentArea.innerHTML = content;
-                currentLesson = lessonKey;
+            if (lessonData[lessonKey]) {
+                // 1. Mostrar contenido de la lección
+                contentArea.innerHTML = lessonData[lessonKey];
 
-                // 3. Actualizar el estado 'active' en la barra lateral
-                // Quitar la clase 'lesson-active' y cambiar el ícono a '✓' de todos los enlaces
+                // 2. Limpiar estilos 'lesson-active' de todos los enlaces
                 document.querySelectorAll('.lesson-link').forEach(link => {
                     link.classList.remove('lesson-active');
-                    const iconSpan = link.querySelector('span:first-child');
-                    if (iconSpan.textContent === '▶') {
-                        iconSpan.textContent = '✓';
-                        iconSpan.classList.remove('text-primary');
+                    
+                    // 3. Restaurar el ícono de '●' y color en los enlaces no clicados (si no están bloqueados)
+                    if (!link.classList.contains('lesson-locked')) {
+                        const iconSpan = link.querySelector('span:first-child');
+                        iconSpan.textContent = '●';
                         iconSpan.classList.add('text-green-500', 'font-bold');
+                        iconSpan.classList.remove('text-primary'); // Asegurar que el color sea verde
                     }
                 });
 
-                // 4. Establecer la clase 'lesson-active' y el ícono de '▶' solo en el elemento clicado
+                // 4. Establecer la clase 'lesson-active' y el ícono de '▶' solo en el elemento clicado (si no es null)
                 if (clickedElement) {
                     clickedElement.classList.add('lesson-active');
                     const iconSpan = clickedElement.querySelector('span:first-child');
                     iconSpan.textContent = '▶';
                     iconSpan.classList.remove('text-green-500', 'font-bold');
-                    iconSpan.classList.add('text-primary');
+                    iconSpan.classList.add('text-primary'); // Establecer el color principal para el ícono activo
                 }
             } else {
-                // En caso de que se intente cargar una lección bloqueada (aunque ya tienen pointer-events: none)
-                console.error('Contenido de lección no encontrado o bloqueado:', lessonKey);
+                console.error('Contenido de lección no encontrado:', lessonKey);
             }
         }
 
-        // Inicializar el estado de la barra lateral y cargar la Lección 4 al cargar
+        // --- FUNCIONALIDAD DEL FOOTER ---
+        const footerTexts = [
+            "✨ ¡Aprender es la clave para el crecimiento profesional!",
+            "🇯🇵 Domina el japonés médico con nuestros cursos intensivos.",
+            "🚀 Genera diálogos realistas para tus clases con IA.",
+            "📚 Accede a recursos exclusivos para profesores."
+        ];
+
+        let currentFooterIndex = 0;
+        const rotatingTextElement = document.getElementById('rotating-text');
+        
+        function rotateFooterText() {
+            if (rotatingTextElement) {
+                // Fade out
+                rotatingTextElement.style.opacity = '0';
+                
+                setTimeout(() => {
+                    // Change text
+                    currentFooterIndex = (currentFooterIndex + 1) % footerTexts.length;
+                    rotatingTextElement.textContent = footerTexts[currentFooterIndex];
+                    
+                    // Fade in
+                    rotatingTextElement.style.opacity = '1';
+                }, 700); // Tiempo igual a la transición CSS
+            }
+        }
+        // --- FIN FUNCIONALIDAD DEL FOOTER ---
+
+
+        // Inicializar el estado de la barra lateral y cargar la Lección 1 al cargar
         document.addEventListener('DOMContentLoaded', () => {
             // Establecer el margen inicial para el contenido principal basado en el ancho de la sidebar
-            document.getElementById('main-content-area').style.marginLeft = '288px'; 
+            if (window.innerWidth >= 768) {
+                document.getElementById('main-content-area').style.marginLeft = '288px'; // w-72
+            }
             
-            // Cargar la lección 4 al iniciar
-            // Pasamos el elemento de enlace de la Lección 4 para que mantenga el estilo activo
-            const initialLink = document.getElementById('lesson-4-link');
-            loadLesson(4, initialLink);
+            // Cargar la lección 1 al iniciar
+            const initialLink = document.getElementById('lesson-1-link');
+            loadLesson(1, initialLink);
+
+            // Iniciar la rotación del texto del footer
+            if (rotatingTextElement) {
+                // Muestra el primer texto inmediatamente
+                rotatingTextElement.textContent = footerTexts[0];
+                rotatingTextElement.style.opacity = '1';
+                // Comienza el ciclo de rotación
+                setInterval(rotateFooterText, 5000); // Rota cada 5 segundos
+            }
         });
+
     </script>
 </body>
 </html>
